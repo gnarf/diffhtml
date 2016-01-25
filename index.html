@@ -183,32 +183,19 @@ document.registerElement('my-custom-element', MyCustomElement);
 
       <h2 id="inner-html">innerHTML</h2>
 
-      This method diffs an element, including its own tag with markup.
-
-      <p>
-        This method will take in a string of markup that matches the element root you
-        are diffing against.  This allows you to change attributes and text on the
-        main element.  This also allows you to change the <code>document.documentElement<code>.
-      </p>
-
-      <p>
-      An example below shows how you could set the page state using markup
-      representing the entire page:
-      </p>
+      This method diffs an element's children with markup, but it's own
+      attribute changes are ignored.
 
       <pre class="language-javascript"><code>
 import diff from 'diffhtml';
 
-diff.outerHTML(document.documentElement, `
-  &lt;html&gt;
-    &lt;head&gt;
-      &lt;title&gt;New Title&lt;/title&gt;
-    &lt;/head&gt;
-    &lt;body&gt;
-      &lt;h1&gt;Hello world!&lt;/h1&gt;
-    &lt;/body&gt;
-  &lt;/html&gt;
+var div = document.createElement('div');
+
+diff.innerHTML(div, `
+  &lt;p&gt;Hello world&lt;/p&gt;
 `);
+
+console.log(div.firstChild.nodeName); // logs out P 
       </code></pre>
 
       <hr>
@@ -242,6 +229,8 @@ diff.outerHTML(document.documentElement, `
       <hr>
 
       <h2 id="lite-brite">Lite Brite</h2>
+
+      <p>Coming soon!</p>
 
       <hr>
 
