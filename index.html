@@ -5,199 +5,129 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
     <meta name="viewport" content="width=device-width, initial-scale=1">
   
-    <title>diffhtml</title>
+    <title>diffHTML</title>
 
     <link rel="stylesheet" href="prism.css">
     <link rel="stylesheet" href="codemirror.css">
-    <style>
-      * { box-sizing: border-box; }
-      body { margin: auto; padding: 20px; max-width: 960px; }
-      pre { word-wrap: break-word; }
-      pre code {
-        width: 100%;
-        display: block;
-      }
-      pre.code {
-        width: 100%;
-      }
-      .editor, output {
-        float: left;
-        width: 50%;
-        min-height: 200px;
-        transition: background linear .2s;
-        margin-bottom: 20px;
-      }
-      output {
-        margin-top: 8px;
-        margin-left: 20px;
-        width: calc(50% - 20px);
-        border: 1px solid #F5F2F0;
-        background: #FFFBDC;
-        padding: 20px;
-        padding-top: 0;
-      }
-      .json {
-        width: 100%;
-        transition: background linear .2s;
-      }
-      .editor.error, .json.error {
-        background: #F3D0D0;
-      }
-      .CodeMirror-scroll::-webkit-scrollbar { width: 0 !important }
-      .CodeMirror-scroll {
-        overflow: -moz-scrollbars-none !important;
-        -ms-overflow-style: none;
-      }
-      .CodeMirror {
-        background: rgba(255, 255, 255, .5);
-        min-height: 25vh;
-        height: auto;
-        border: 1px solid #E9E9E9;
-        padding: 20px;
-        font-size: 16px;
-        font-family: Consolas,Monaco,"Andale Mono",monospace;
-      }
-      footer {
-        margin-top: 40px;
-      }
-      a { text-decoration: none; color: #333; }
-      a span { position: relative; top: -5px; }
-      .bump { margin-top: 40px; }
-    </style>
+    <link rel="stylesheet" href="styles.css">
+
+    <script src="https://use.typekit.net/xze5bef.js"></script>
+    <script>try{Typekit.load({ async: true });}catch(e){}</script>
   </head>
   <body>
-    <h1>diffhtml</h1>
-    <a href="http://github.com/tbranyen/diffhtml"><span>GitHub Repository</span></a>
-    <iframe src="https://ghbtns.com/github-btn.html?user=tbranyen&repo=diffhtml&type=star&count=true" frameborder="0" scrolling="0" width="170px" height="20px"></iframe>
-    <p class="bump">
-      Allows you to easily swap out markup and have an intelligent virtual diff
-      patch in the changes. Contrast to innerHTML that blows everything away
-      when set.
-    </p>
+    <aside>
+      <a href="http://github.com/tbranyen/diffhtml">
+        <h1><img width="20%" src="kiwi.png">diffHTML</h1>
+        <span>GitHub Repository</span>
+      </a>
 
-    <pre class="language-javascript code"><code>diff.innerHTML(document.body, '&lt;new markup to change/&gt;');</code></pre>
+      <nav>
+        <h4>Basics</h4>
+        <hr>
+        <a href="#about">About</a>
+        <a href="#installing">Installing</a>
 
-    <p>
-    </p>
+        <h4>API</h4>
+        <hr>
+        <a href="#outerHTML">outerHTML</a>
+        <a href="#innerHTML">innerHTML</a>
+        <a href="#element">element</a>
+        <a href="#addTransitionState">addTransitionState</a>
+        <a href="#removeTransitionState">removeTransitionState</a>
+        <a href="#enableProllyfill">enableProllyfill</a>
 
-    <h2>About</h2>
-    <p>
-      As you can see with the example above, this is a native extension to the
-      browser's Element prototype.  The property `diffHTML` is a dynamic
-      JavaScript setter, that uses the excellent <a
-      href="https://github.com/Matt-Esch/virtual-dom">virtual-dom</a> library
-      under the hood.  This library accepts a virtual tree and applies patches directly to the
-      element.  While this dependency is excellent at diffing and patching, its
-      interface requires using <a
-      href"https://github.com/dominictarr/hyperscript">HyperScript</a>.
-    </p>
-    <p>
-      Since this library allows you to pass straight HTML, we must first
-      convert it to HyperScript so that the diffing library can process
-      patches.  I've accomplished this by parsing the markup passed through a
-      hidden DOM Document created when the library is parsed.  Inside this
-      disconnect Document, an empty <code>&lt;div&gt;</code> is created and
-      <code>innerHTML</code> is applied to parse out the DOM tree using
-      very little code.
-    </p>
+        <h5>Transitions</h5>
+        <hr>
+        <a href="#attached-transition">attached</a>
+        <a href="#detached-transition">detached</a>
+        <a href="#attribute-changed-transition">attributeChanged</a>
 
-    <h2>Installing</h2>
+        <h5>Custom Elements</h5>
+        <hr>
+        <a href="#created-callback">createdCallback</a>
+        <a href="#attached-callback">attachedCallback</a>
+        <a href="#detached-callback">detachedCallback</a>
+        <a href="#attribute-changed-callback">attributeChangedCallback</a>
+        <a href="#text-changed-callback">textChangedCallback</a>
 
-    <p>
-      You can easily install by downloading the <a href="https://raw.githubusercontent.com/tbranyen/diffhtml/master/dist/diffhtml.js">latest prebuilt JavaScript
-      distribution</a> or by using NPM:
+        <h4>Demos</h4>
+        <hr>
+        <a href="#live-template">Live template</a>
+        <a href="#bar-chart">Simple Bar Chart</a>
+        <a href="#lite-brite">Lite Brite</a>
+      </nav>
+    </aside>
 
-    <pre class="language-javascript"><code>npm install diffhtml</code></pre>
-    </p>
+    <main>
+      <p class="bump">
+        Allows you to easily swap out markup and have an intelligent virtual diff
+        patch in the changes.
+      </p>
 
-    <h2>Demo</h2>
+      <pre class="language-javascript code"><code>diff.innerHTML(document.body, '&lt;h1&gt;new markup to change&lt/h1&gt;');</code></pre>
+      <p>
+      Contrast to innerHTML that blows everything away
+        when set.
+      </p>
 
-    <p>
-      Feel free to change the markup and JSON data below.  The output will
-      update automatically with the changes.
-    </p>
+      <hr>
 
-    <div style="clear: both;">
-      <pre class="language-handlebars editor"></pre>
+      <h2 id="about">About</h2>
+      <p>
+        Inspired by React and motivated by the Web, this is a low-level tool which aims
+        to help web developers write applications. By focusing on the markup
+        representing how your application state should look, diffHTML will figure out
+        how to modify the page with the fewest amount of operations.
+
+        <h5>Features:</h5>
+
+        <ul>
+          <li>Intelligent virtual DOM diffing and patching of HTML text and elements.</li>
+          <li>Transitions API to hook into element and attribute state changes.</li>
+          <li>Custom Elements in browsers without native support.</li>
+          <li>Offloading diff to Web Workers which provides better rendering performance.</li>
+          <li>Object pooling to avoid GC thrashing and expensive uuid generation.</li>
+        </ul>
+      </p>
+
+      <h2 id="installing">Installing</h2>
+
+      <p>
+        You can easily install by downloading the <a href="https://raw.githubusercontent.com/tbranyen/diffhtml/master/dist/diffhtml.js">latest prebuilt JavaScript
+        distribution</a> or by using NPM:
+
+      <pre class="language-javascript"><code>npm install diffhtml</code></pre>
+      </p>
+
+      <hr>
+
+      <h2>Live template</h2>
+
+      <p>
+        Feel free to change the markup and JSON data below.  The output will
+        update automatically with the changes.
+      </p>
 
       <output></output>
-    </div>
 
-    <pre class="language-javascript json"></pre> 
+      <div class="demo" style="clear: both;">
+        <pre class="language-handlebars editor"></pre>
+        <pre class="language-javascript json"></pre> 
 
-    <script src="prism.js"></script>
-    <script src="codemirror.js"></script>
-    <script src="mustache.js"></script>
-    <script src="https://rawgit.com/tbranyen/diffhtml/master/dist/diffhtml.js"></script>
-    <script>
-      var editor = document.querySelector('.editor');
-      var json = document.querySelector('.json');
-      var output = document.querySelector('output');
+        <button class="run-animation">Run animation</button>
+      </div>
 
-      function text(node) {
-        return [].reduce.call(node.childNodes, function(memo, node) {
-          if (node.nodeType === 3) {
-            memo.push(node.nodeValue);
-            return memo;
-          }
+      <hr>
 
-          return memo.concat(text(node));
-        }, []).join('');
-      }
+      <script src="prism.js"></script>
+      <script src="codemirror.js"></script>
+      <script src="mustache.js"></script>
+      <script src="demos/dist/diffhtml.js"></script>
+      <script src="docs.js"></script>
 
-      var defaults = {
-        editorText: ['<div>', '  <h1>{{value}}</h1>', '</div>'].join('\n'),
-        jsonText: ['{', '  "value": "Just a simple demo..."', '}'].join('\n')
-      }
-
-      function update(editorText, jsonText) {
-        editorText = typeof editorText === 'string' ? editorText : defaults.editorText;
-        jsonText = typeof jsonText === 'string' ? jsonText : defaults.jsonText;
-
-        defaults.editorText = editorText;
-        defaults.jsonText = jsonText;
-
-        try {
-          var data = JSON.parse(jsonText);
-
-          json.classList.remove('error');
-          diff.innerHTML(output, Mustache.render(editorText, data));
-          editor.classList.remove('error');
-
-        } catch(ex) {
-          if (ex.message.indexOf('JSON') === 0) {
-            json.classList.add('error');
-          }
-          else {
-            editor.classList.add('error');
-          }
-        }
-      }
-
-      update();
-
-      makeCodeMirror(editor, 'editorText');
-      makeCodeMirror(json, 'jsonText');
-
-      function makeCodeMirror(el, name) {
-        var codeMirror = CodeMirror(el, { lineWrapping: true, value: defaults[name] });
-
-        codeMirror.on('change', function(ev) {
-          var contents = codeMirror.getValue();
-
-          if (el.classList.contains('editor')) {
-            update(contents);
-          }
-          else {
-            console.log(contents);
-            update(null, contents);
-          }
-        });
-      }
-    </script>
-
-    <footer>
-      <p>MIT License 2015, Tim Branyen (<a href="https://twitter.com/tbranyen">@tbranyen</a>)</p>
-    </footer>
+      <footer>
+        <p>MIT License 2015, Tim Branyen (<a href="https://twitter.com/tbranyen">@tbranyen</a>)</p>
+      </footer>
+    </main>
   </body>
 </html>
