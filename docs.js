@@ -36,13 +36,13 @@ var rotate = 0;
 
 function runAnimation() {
   if (!isRunning) {
-    x = 0;
     rotate = 0;
     isRunning = true;
+    increment = x ? -10 : 10;
 
     interval = setInterval(function() {
-      x += 10;
-      rotate += 10;
+      x += increment;
+      rotate += increment;
       rotate = rotate % 360;
 
       update(null, `{
@@ -51,6 +51,10 @@ function runAnimation() {
 }`);
 
       if (x > (output.offsetWidth - 200)) {
+        clearInterval(interval);
+        isRunning = false;
+      }
+      else if (x <= 0) {
         clearInterval(interval);
         isRunning = false;
       }
@@ -91,10 +95,15 @@ update();
 var editorMirror = makeCodeMirror(editor, 'editorText');
 var jsonMirror = makeCodeMirror(json, 'jsonText');
 
-editorMirror.on('change', function(ev) {
-  var contents = codeMirror.getValue();
+jsonMirror.on('change', function(ev) {
 
-  if (el.classList.contains('editor')) {
+});
+
+// Whenever the editor changes, re-render.
+editorMirror.on('change', function(ev) {
+  var contents = editorMirror.getValue();
+
+  if (editor.classList.contains('editor')) {
     update(contents);
   }
   else {

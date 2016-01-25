@@ -11,10 +11,8 @@
     <link rel="stylesheet" href="codemirror.css">
     <link rel="stylesheet" href="styles.css">
 
-    <!--
     <script src="https://use.typekit.net/xze5bef.js"></script>
     <script>try{Typekit.load({ async: true });}catch(e){}</script>
-    -->
   </head>
   <body>
     <aside>
@@ -31,12 +29,12 @@
 
         <h4>API</h4>
         <hr>
-        <a href="#outerHTML">outerHTML</a>
-        <a href="#innerHTML">innerHTML</a>
+        <a href="#outer-html">outerHTML</a>
+        <a href="#inner-html">innerHTML</a>
         <a href="#element">element</a>
-        <a href="#addTransitionState">addTransitionState</a>
-        <a href="#removeTransitionState">removeTransitionState</a>
-        <a href="#enableProllyfill">enableProllyfill</a>
+        <a href="#add-transition-state">addTransitionState</a>
+        <a href="#remove-transition-state">removeTransitionState</a>
+        <a href="#enable-prollyfil">enableProllyfill</a>
 
         <h5>Transitions</h5>
         <hr>
@@ -55,7 +53,7 @@
         <h4>Demos</h4>
         <hr>
         <a href="#live-template">Live template</a>
-        <a href="#bar-chart">Simple Bar Chart</a>
+        <a href="#simple-bar-chart">Simple Bar Chart</a>
         <a href="#lite-brite">Lite Brite</a>
       </nav>
     </aside>
@@ -98,26 +96,138 @@
         You can easily install by downloading the <a href="https://raw.githubusercontent.com/tbranyen/diffhtml/master/dist/diffhtml.js">latest prebuilt JavaScript
         distribution</a> or by using NPM:
 
-      <pre class="language-javascript"><code>npm install diffhtml</code></pre>
+        <pre class="language-javascript"><code>npm install diffhtml</code></pre>
+
+        Distributions are commited into the repository, so you can point your
+        package.json to a specific hash if you wish to lock or test a specific
+        version. This is useful for testing out bug fixes or future releases.
+
+      </p>
+      
+      <p>
+        Example:
+
+        <pre class="language-javascript"><code>{
+  "dependencies": {
+    "diffhtml": "tbranyen/diffhtml#master"
+  }
+}</code></pre>
       </p>
 
       <hr>
 
-      <h2>Live template</h2>
+      <h2 id="outer-html">outerHTML</h2>
+
+      This method diffs an element, including its own tag with markup.
 
       <p>
-        Feel free to change the markup and JSON data below.  The output will
-        update automatically with the changes.
+        This method will take in a string of markup that matches the element root you
+        are diffing against.  This allows you to change attributes and text on the
+        main element.  This also allows you to change the <code>document.documentElement<code>.
       </p>
 
-      <output></output>
+      <p>
+      An example below shows how you could set the page state using markup
+      representing the entire page:
+      </p>
 
-      <div class="demo" style="clear: both;">
-        <pre class="language-handlebars editor"></pre>
-        <pre class="language-javascript json"></pre> 
+      <pre class="language-javascript"><code>
+import diff from 'diffhtml';
 
-        <button class="run-animation">Run animation</button>
+diff.outerHTML(document.documentElement, `
+  &lt;html&gt;
+    &lt;head&gt;
+      &lt;title&gt;New Title&lt;/title&gt;
+    &lt;/head&gt;
+    &lt;body&gt;
+      &lt;h1&gt;Hello world!&lt;/h1&gt;
+    &lt;/body&gt;
+  &lt;/html&gt;
+`);
+      </code></pre>
+
+      Not all uses of <code>outerHTML</code> involve the entire page, you may
+      want to use on a single element when writing a Custom Element class.
+
+      <pre class="language-javascript"><code>
+import diff from 'diffhtml';
+
+class MyCustomElement extends HTMLElement {
+  attachedCallback() {
+    this.render();
+  }
+
+  render() {
+    diff.outerHTML(this, `
+      &lt;my-custom-element&gt;
+        &lt;h1&gt;${this.msg}&lt;/h1&gt;
+      &lt;/my-custom-element&gt;
+    `)
+  }
+}
+
+document.registerElement('my-custom-element', MyCustomElement);
+      </code></pre>
+
+      <hr>
+
+      <h2 id="inner-html">innerHTML</h2>
+
+      This method diffs an element, including its own tag with markup.
+
+      <p>
+        This method will take in a string of markup that matches the element root you
+        are diffing against.  This allows you to change attributes and text on the
+        main element.  This also allows you to change the <code>document.documentElement<code>.
+      </p>
+
+      <p>
+      An example below shows how you could set the page state using markup
+      representing the entire page:
+      </p>
+
+      <pre class="language-javascript"><code>
+import diff from 'diffhtml';
+
+diff.outerHTML(document.documentElement, `
+  &lt;html&gt;
+    &lt;head&gt;
+      &lt;title&gt;New Title&lt;/title&gt;
+    &lt;/head&gt;
+    &lt;body&gt;
+      &lt;h1&gt;Hello world!&lt;/h1&gt;
+    &lt;/body&gt;
+  &lt;/html&gt;
+`);
+      </code></pre>
+
+      <hr>
+
+      <h2 id="live-template">Live template</h2>
+
+      <div class="example">
+        <p>
+          Feel free to change the markup and JSON data below.  The output will
+          update automatically with the changes.
+        </p>
+
+        <output></output>
+
+        <div class="demo" style="clear: both;">
+          <pre class="language-handlebars editor"></pre>
+          <pre class="language-javascript json"></pre> 
+
+          <button class="run-animation">Run animation</button>
+        </div>
       </div>
+
+      <hr>
+
+      <h2 id="simple-bar-chart">Simple Bar Chart</h2>
+
+      <hr>
+
+      <h2 id="lite-brite">Lite Brite</h2>
 
       <hr>
 
