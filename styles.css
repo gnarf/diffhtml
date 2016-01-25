@@ -41,7 +41,6 @@ output {
   padding: 20px;
 }
 .example {
-  padding: 120px;
   padding-top: 20px;
 }
 .json {
@@ -177,4 +176,29 @@ nav a:hover {
 nav hr {
   border: none;
   border-bottom: 1px solid #EAF3BE;
+}
+favorite-movies-chart {
+  border: none !important;
+  background: #FF217D;
+  border-radius: 10px;
+  line-height: 20px;
+  padding-bottom: 0;
+  margin-bottom: 0;
+  border-top-left-radius: 0;
+}
+
+favorite-movies-chart svg {
+  border-top-left-radius: 0 !important;
+}
+
+.re-render {
+  background: #CC1A64;
+  color: #FFF;
+  padding: 14px;
+  border: none;
+  border-top-left-radius: 5px;
+  border-top-right-radius: 5px;
+  cursor: pointer;
+  font-weight: bold;
+  outline: none;
 }

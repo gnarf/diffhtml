@@ -98,7 +98,12 @@ var editorMirror = makeCodeMirror(editor, 'editorText');
 var jsonMirror = makeCodeMirror(json, 'jsonText');
 
 jsonMirror.on('change', function(ev) {
+  var editorText = typeof editorText === 'string' ? editorText : defaults.editorText;
+  var jsonText = jsonMirror.getValue();
+  var data = JSON.parse(jsonText);
+  var markup = Mustache.render(editorText, data);
 
+  diff.innerHTML(output, markup);
 });
 
 // Whenever the editor changes, re-render.
@@ -118,3 +123,7 @@ function makeCodeMirror(el, name) {
 }
 
 document.querySelector('.run-animation').onclick = runAnimation;
+
+document.querySelector('.re-render').onclick = function() {
+  document.querySelector('favorite-movies-chart').randomizeAndRender();
+}

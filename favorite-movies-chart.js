@@ -57,24 +57,14 @@ var FavoriteMoviesChart = (function (_HTMLElement) {
         }
 
         _this.render();
-
-        //requestAnimationFrame(render);
       };
 
-      window.render = render;
+      // Expose this helper render method as a public hook.
+      this.randomizeAndRender = render;
 
-      this.items = [{ name: 'Rocky', rating: 5.0 }, { name: 'The Good, The Bad, & The Ugly', rating: 4.9 }, { name: 'Pulp Fiction', rating: 4.5 }, { name: 'Dazed and Confused', rating: 4.0 }, { name: 'Transformers 2', rating: 3.0 }, { name: 'Twilight', rating: 2.0 }, { name: 'Shrek 8', rating: 0.3 }];
+      this.items = [{ name: 'Rocky', rating: 5.0 }, { name: 'Star Wars', rating: 4.9 }, { name: 'Pulp Fiction', rating: 4.5 }, { name: 'Dazed and Confused', rating: 4.0 }, { name: 'Transformers 2', rating: 3.0 }, { name: 'Twilight', rating: 2.0 }, { name: 'Shrek 8', rating: 0.3 }];
 
       this.data = this.makeData(10);
-
-      // Change the data every half second or so.
-      setInterval(function (data) {
-        _this.data = _this.data.map(function (item) {
-          item.rating = Math.random() * 5;return item;
-        }).sort(function (a, b) {
-          return b.rating - a.rating;
-        });
-      }, 50);
 
       document.addTransitionState('attached', function (elem) {
         var parent = elem.parentNode;
