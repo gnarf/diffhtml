@@ -2,6 +2,8 @@ var editor = document.querySelector('.editor');
 var json = document.querySelector('.json');
 var output = document.querySelector('output');
 
+diff.enableProllyfill();
+
 function text(node) {
   return [].reduce.call(node.childNodes, function(memo, node) {
     if (node.nodeType === 3) {
