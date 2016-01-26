@@ -69,6 +69,10 @@ var FavoriteMoviesChart = (function (_HTMLElement) {
       document.addTransitionState('attached', function (elem) {
         var parent = elem.parentNode;
 
+        if (!parent) {
+          return;
+        }
+
         if (parent.getAttribute('class') === 'bars' && elem.nodeName === 'rect') {
           var oldValue = elem.getAttribute('width');
           elem.setAttribute('width', '0');

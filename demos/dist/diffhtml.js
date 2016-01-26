@@ -503,7 +503,7 @@ function enableProllyfill() {
   // Polyfill in the `registerElement` method if it doesn't already exist. This
   // requires patching `createElement` as well to ensure that the proper proto
   // chain exists.
-  if (!document.registerElement) {
+  if (!realRegisterElement) {
     Object.defineProperty(document, 'registerElement', {
       configurable: true,
 
@@ -589,13 +589,14 @@ function enableProllyfill() {
     window.removeEventListener('load', activateComponents);
   };
 
-  // This section will automatically parse out your entire page to ensure all
-  // custom elements are hooked into.
-  //window.addEventListener('load', activateComponents);
-
   // If the document has already loaded, immediately activate the components.
-  //if (document.readyState === 'complete') { activateComponents(); }
-  window.activateComponents = activateComponents;
+  if (document.readyState === 'complete') {
+    activateComponents();
+  } else {
+    // This section will automatically parse out your entire page to ensure all
+    // custom elements are hooked into.
+    window.addEventListener('load', activateComponents);
+  }
 }
 
 },{"./element/custom":1,"./errors":4,"./node/patch":7,"./node/release":8,"./node/tree":10,"./transitions":13}],6:[function(_dereq_,module,exports){
@@ -1029,8 +1030,6 @@ var CHANGE_TEXT = exports.CHANGE_TEXT = 3;
  * @param patches - optional
  */
 function sync(oldTree, newTree, patches) {
-  console.log(oldTree, newTree);
-
   patches = patches || [];
 
   if (!Array.isArray(patches)) {
@@ -1304,8 +1303,6 @@ var blockTextElements = ['script', 'noscript', 'style', 'pre', 'template'];
  * @param e - Object that contains patches.
  */
 function process(element, patches) {
-  console.log(patches);
-
   var elementMeta = _tree.TreeCache.get(element) || {};
   var promises = [];
   var triggerTransition = transition.buildTrigger(promises);
@@ -2118,7 +2115,6 @@ function makeParser() {
     script: true,
     noscript: true,
     style: true,
-    pre: true,
     template: true
   };
 
