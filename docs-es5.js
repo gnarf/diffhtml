@@ -27,6 +27,7 @@ var isRunning = false;
 var interval = null;
 var x = 0;
 var rotate = 0;
+var increment = 0;
 
 function runAnimation() {
   if (!isRunning) {
