@@ -139,3 +139,9 @@ document.querySelector('.board').onmouseover = function(ev) {
     ev.target.color = document.querySelector('input[type=color]').value;
   }
 };
+
+document.querySelector('.board').onmouseenter = function(ev) {
+  if (ev.target.nodeName.toLowerCase() === 'lite-brite') {
+    ev.target.color = document.querySelector('input[type=color]').value;
+  }
+};
