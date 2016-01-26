@@ -10,8 +10,6 @@ class LiteBrite extends HTMLElement {
 
     this.background = document.createElement('div');
     this.background.classList.add('background');
-
-    document.querySelector('#backgrounds').appendChild(this.background);
   }
 
   set color(value) {
