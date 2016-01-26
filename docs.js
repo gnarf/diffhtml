@@ -42,7 +42,7 @@ function runAnimation() {
     isRunning = true;
     increment = x ? -10 : 10;
 
-    interval = setInterval(function() {
+    requestAnimationFrame(function animate() {
       x += increment;
       rotate += increment;
       rotate = rotate % 360;
@@ -53,12 +53,13 @@ function runAnimation() {
 }`);
 
       if (x > (output.offsetWidth - 200)) {
-        clearInterval(interval);
         isRunning = false;
       }
       else if (x <= 0) {
-        clearInterval(interval);
         isRunning = false;
+      }
+      else {
+        requestAnimationFrame(animate);
       }
     }, 30);
   }
