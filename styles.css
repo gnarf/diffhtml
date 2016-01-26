@@ -250,13 +250,18 @@ favorite-movies-chart svg {
     float: none;
     width: 100%;
   }
+  
+  aside h1 {
+    background-color: #F9FFD8;
+  }
 
   aside h1 img {
     top: 20px;
-    right: 548px;
     z-index: 5000;
     position: fixed;
     width: 64px;
+    left: auto;
+    right: 20px;
   }
 
   aside h1:after {
@@ -268,6 +273,6 @@ favorite-movies-chart svg {
     left: 0;
     right: 0;
     height: 120px;
-    background: linear-gradient(#F9FFD9, rgba(255, 255, 255, 0.66));
+    background: linear-gradient(#F9FFD9, rgba(255, 255, 255, 0));
   }
 }
