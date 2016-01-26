@@ -503,13 +503,15 @@ function enableProllyfill() {
   // Polyfill in the `registerElement` method if it doesn't already exist. This
   // requires patching `createElement` as well to ensure that the proper proto
   // chain exists.
-  Object.defineProperty(document, 'registerElement', {
-    configurable: true,
+  if (!document.registerElement) {
+    Object.defineProperty(document, 'registerElement', {
+      configurable: true,
 
-    value: function value(tagName, component) {
-      registerElement(tagName, component);
-    }
-  });
+      value: function value(tagName, component) {
+        registerElement(tagName, component);
+      }
+    });
+  }
 
   // If HTMLElement is an object, rejigger it to work like a function so that
   // it can be extended. Specifically affects IE and Safari.
@@ -589,12 +591,11 @@ function enableProllyfill() {
 
   // This section will automatically parse out your entire page to ensure all
   // custom elements are hooked into.
-  window.addEventListener('load', activateComponents);
+  //window.addEventListener('load', activateComponents);
 
   // If the document has already loaded, immediately activate the components.
-  if (document.readyState === 'complete') {
-    activateComponents();
-  }
+  //if (document.readyState === 'complete') { activateComponents(); }
+  window.activateComponents = activateComponents;
 }
 
 },{"./element/custom":1,"./errors":4,"./node/patch":7,"./node/release":8,"./node/tree":10,"./transitions":13}],6:[function(_dereq_,module,exports){
@@ -1028,6 +1029,8 @@ var CHANGE_TEXT = exports.CHANGE_TEXT = 3;
  * @param patches - optional
  */
 function sync(oldTree, newTree, patches) {
+  console.log(oldTree, newTree);
+
   patches = patches || [];
 
   if (!Array.isArray(patches)) {
@@ -1301,6 +1304,8 @@ var blockTextElements = ['script', 'noscript', 'style', 'pre', 'template'];
  * @param e - Object that contains patches.
  */
 function process(element, patches) {
+  console.log(patches);
+
   var elementMeta = _tree.TreeCache.get(element) || {};
   var promises = [];
   var triggerTransition = transition.buildTrigger(promises);

@@ -127,3 +127,8 @@ document.querySelector('.run-animation').onclick = runAnimation;
 document.querySelector('.re-render').onclick = function() {
   document.querySelector('favorite-movies-chart').randomizeAndRender();
 }
+
+document.querySelector('aside h1 img').onclick = function(ev) {
+  ev.preventDefault();
+  document.body.scrollTop = 0;
+};
