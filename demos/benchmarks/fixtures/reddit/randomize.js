@@ -34,6 +34,6 @@ function render(count) {
     })
   };
 
-  document.documentElement.outerDiffHTML = template.render(data);
+  diff.outerHTML(document.documentElement, template.render(data));
   window.done();
 }

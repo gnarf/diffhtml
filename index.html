@@ -28,6 +28,7 @@
         <hr>
         <a href="#about">About</a>
         <a href="#installing">Installing</a>
+        <a href="#prollyfill">Enabling the prollyfill</a>
 
         <h4>API</h4>
         <hr>
@@ -68,14 +69,18 @@
       </p>
 
       <p class="bump">
-        Allows you to easily swap out markup and have an intelligent virtual diff
-        patch in the changes.
+        <strong>diffHTML</strong> provides an easy way to swap out markup with
+        an intelligent virtual diff, it <i>optionally</i> exposes a Custom
+        Element's polyfill, and supports transitions hooks for element,
+        attribute, and text modifications that can delay future renders until
+        an animation/transition Promise has resolved.
       </p>
 
       <pre class="language-javascript code"><code>diff.innerHTML(document.body, '&lt;h1&gt;new markup to change&lt/h1&gt;');</code></pre>
-      <p>
-      Contrast to innerHTML that blows everything away
-        when set.
+      <p> 
+      Compare to <code>innerHTML</code> and <code>outerHTML</code> which do not
+      recyle elements by design and instead destroy and recreate the DOM tree
+      every time.
       </p>
 
       <hr>
