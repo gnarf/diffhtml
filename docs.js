@@ -132,3 +132,9 @@ document.querySelector('aside h1 img').onclick = function(ev) {
   ev.preventDefault();
   document.body.scrollTop = 0;
 };
+
+document.querySelector('.board').onmouseover = function(ev) {
+  if (ev.target.nodeName.toLowerCase() === 'lite-brite') {
+    ev.target.color = document.querySelector('input[type=color]').value;
+  }
+};

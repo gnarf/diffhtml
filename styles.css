@@ -197,11 +197,11 @@ favorite-movies-chart svg {
   color: #FFF;
   padding: 14px;
   border: none;
-  border-top-left-radius: 5px;
-  border-top-right-radius: 5px;
+  border-radius: 5px;
   cursor: pointer;
   font-weight: bold;
   outline: none;
+  margin-bottom: 5px;
 }
 
 @media (max-width: 1000px) {
@@ -275,4 +275,17 @@ favorite-movies-chart svg {
     height: 120px;
     background: linear-gradient(#F9FFD9, rgba(255, 255, 255, 0));
   }
+}
+
+strong.board-label {
+  position: relative;
+  top: -5px;
+  color: #848484;
+}
+.board {
+  border-radius: 15px;
+  background-color: #333;
+  padding-left: 15%;
+  padding-right: 15%;
+  padding-bottom: 20px;
 }

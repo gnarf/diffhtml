@@ -1,0 +1,41 @@
+lite-brite {
+  background: #343029;
+  width: 50px;
+  height: 50px;
+  border-radius: 25px;
+  display: inline-block;
+  margin-top: 25px;
+  margin-left: 25px;
+  box-shadow: inset 3px 2px 6px #212121;
+  position: relative;
+  transition: background ease-in .2s;
+}
+
+#backgrounds {
+  -webkit-filter: blur(40px);
+  -webkit-transform: translateZ(0);
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  z-index: -1;
+}
+
+.background {
+  display: block;
+  width: 50px;
+  height: 50px;
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: -1;
+}
+
+input[type=color] {
+  margin: 10px;
+  margin-bottom: 30px;
+  height: 34px;
+  border-radius: 19px;
+  background: transparent;
+  border: none;
+}
