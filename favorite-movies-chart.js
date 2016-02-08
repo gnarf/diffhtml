@@ -39,10 +39,8 @@ var FavoriteMoviesChart = (function (_HTMLElement) {
           rest[_key - 2] = arguments[_key];
         }
 
-        if (elem.matches('.bars rect') && name === 'width') {
-          return _this.animate.apply({ duration: 250 }, [elem, name].concat(rest)).then(function () {
-            elem.setAttribute(name, rest[1]);
-          });
+        if (elem.matches('rect') && name === 'width') {
+          return _this.animate.apply({ duration: 250 }, [elem, name].concat(rest));
         }
       });
 
@@ -70,7 +68,7 @@ var FavoriteMoviesChart = (function (_HTMLElement) {
   }, {
     key: 'animate',
     value: function animate(element, attributeName, oldValue, newValue) {
-      oldValue = parseInt(element.getAttribute(attributeName));
+      oldValue = parseInt(oldValue);
       newValue = parseInt(newValue);
 
       // Throttle to 30fps.
@@ -104,6 +102,10 @@ var FavoriteMoviesChart = (function (_HTMLElement) {
             resolve();
           }
         });
+        // Ensure the animation always ends with the correct newValue set on the
+        // attributeName.
+      }).then(function () {
+        element.setAttribute(attributeName, newValue);
       });
     }
 
@@ -140,12 +142,10 @@ var FavoriteMoviesChart = (function (_HTMLElement) {
         this.outlineColor = this.originalOutlineColor;
       }
 
-      this.barWidth = this.width - this.offset - this.margin.left - this.margin.right;
       this.outlineWidth = this.width - this.margin.left - this.margin.right;
+      this.barWidth = this.outlineWidth - this.offset;
 
       this.height = this.margin.top + this.data.length * (this.barHeight + this.barMargin) - this.margin.bottom / 2;
-
-      console.log(this.width, this.outlineWidth, this.barWidth);
 
       this.diffInnerHTML = '\n      <svg\n        style="border-radius: 10px; background-color: rgba(0, 0, 0, 0.2);"\n        width=' + this.width + '\n        height=' + this.height + '\n      >\n        <!-- Outlines -->\n        <g class="outlines">\n          ' + this.data.map(function (film, i) {
         return '\n            <rect\n              x=' + _this2.margin.left + '\n              y=' + (i * (_this2.barHeight + _this2.barMargin) + _this2.margin.top - 7) + '\n              rx=10\n              ry=10\n              width=' + _this2.outlineWidth + '\n              height=' + (_this2.barHeight + _this2.barMargin / 2) + '\n              style="fill: ' + _this2.outlineColor + ';"\n            ></rect>\n          ';

@@ -1797,8 +1797,10 @@ Object.keys(states).forEach(function iterateStates(stateName) {
       // Merge these Promises into the main cache.
       promises.push.apply(promises, newPromises);
 
-      // Recursively call into the children.
-      make[stateName](element.childNodes, args, promises);
+      // Recursively call into the children if attached or detached.
+      if (stateName === 'attached' || stateName === 'detached') {
+        make[stateName](element.childNodes, args, promises);
+      }
     });
 
     return promises;
