@@ -36,14 +36,16 @@ var interval = null;
 var x = 0;
 var rotate = 0;
 var increment = 0;
+var offset = output.offsetWidth;
 
 function runAnimation() {
   if (!isRunning) {
     rotate = 0;
     isRunning = true;
-    increment = x ? -10 : 10;
+    offset = output.offsetWidth;
+    increment = (x ? -10 : 10) * 1;
 
-    requestAnimationFrame(function animate() {
+    function animate() {
       x += increment;
       rotate += increment;
       rotate = rotate % 360;
@@ -53,16 +55,20 @@ function runAnimation() {
   "rotate": "${rotate}deg"
 }`);
 
-      if (x > (output.offsetWidth - 200)) {
+      if (x > offset - 200) {
         isRunning = false;
+        x = offset - 200;
       }
       else if (x <= 0) {
         isRunning = false;
+        x = 0;
       }
       else {
         requestAnimationFrame(animate);
       }
-    }, 30);
+    }
+
+    animate();
   }
 }
 
@@ -73,24 +79,15 @@ function update(editorText, jsonText) {
   defaults.editorText = editorText;
   defaults.jsonText = jsonText;
 
-  try {
-    var data = JSON.parse(jsonText);
-    var markup = Mustache.render(editorText, data);
+  var data = JSON.parse(jsonText);
+  var markup = Mustache.render(editorText, data);
 
-    json.classList.remove('error');
-    diff.innerHTML(output, markup);
-    editor.classList.remove('error');
+  //json.classList.remove('error');
+  diff.innerHTML(output, markup);
+  //editor.classList.remove('error');
 
-    if (jsonMirror) {
-      jsonMirror.setValue(jsonText);
-    }
-  } catch(ex) {
-    if (ex.message.indexOf('JSON') === 0) {
-      json.classList.add('error');
-    }
-    else {
-      editor.classList.add('error');
-    }
+  if (jsonMirror) {
+    //jsonMirror.setValue(jsonText);
   }
 }
 
@@ -126,8 +123,20 @@ function makeCodeMirror(el, name) {
 
 document.querySelector('.run-animation').onclick = runAnimation;
 
+var fav = document.querySelector('favorite-movies-chart');
+
+function renderFavoriteMoviesLoop() {
+  if (fav.render) {
+    fav.render();
+  }
+
+  requestAnimationFrame(renderFavoriteMoviesLoop);
+}
+
+renderFavoriteMoviesLoop();
+
 document.querySelector('.re-render').onclick = function() {
-  document.querySelector('favorite-movies-chart').randomizeAndRender();
+  fav.randomize();
 }
 
 document.querySelector('aside h1 img').onclick = function(ev) {
@@ -146,3 +155,7 @@ document.querySelector('.board').onmouseenter = function(ev) {
     ev.target.color = document.querySelector('input[type=color]').value;
   }
 };
+
+[...document.querySelectorAll('h2[id]')].forEach(el => el.onclick = (ev) => {
+  location.hash = el.id;
+});

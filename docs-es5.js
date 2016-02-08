@@ -1,6 +1,8 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
 "use strict";
 
+var _toConsumableArray = function (arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) arr2[i] = arr[i]; return arr2; } else { return Array.from(arr); } };
+
 var editor = document.querySelector(".editor");
 var json = document.querySelector(".json");
 var output = document.querySelector("output");
@@ -28,28 +30,36 @@ var interval = null;
 var x = 0;
 var rotate = 0;
 var increment = 0;
+var offset = output.offsetWidth;
 
 function runAnimation() {
   if (!isRunning) {
-    rotate = 0;
-    isRunning = true;
-    increment = x ? -10 : 10;
+    (function () {
+      var animate = function () {
+        x += increment;
+        rotate += increment;
+        rotate = rotate % 360;
 
-    requestAnimationFrame(function animate() {
-      x += increment;
-      rotate += increment;
-      rotate = rotate % 360;
+        update(null, "{\n  \"translate\": \"" + x + "px, 0\",\n  \"rotate\": \"" + rotate + "deg\"\n}");
 
-      update(null, "{\n  \"translate\": \"" + x + "px, 0\",\n  \"rotate\": \"" + rotate + "deg\"\n}");
+        if (x > offset - 200) {
+          isRunning = false;
+          x = offset - 200;
+        } else if (x <= 0) {
+          isRunning = false;
+          x = 0;
+        } else {
+          requestAnimationFrame(animate);
+        }
+      };
 
-      if (x > output.offsetWidth - 200) {
-        isRunning = false;
-      } else if (x <= 0) {
-        isRunning = false;
-      } else {
-        requestAnimationFrame(animate);
-      }
-    }, 30);
+      rotate = 0;
+      isRunning = true;
+      offset = output.offsetWidth;
+      increment = (x ? -10 : 10) * 1;
+
+      animate();
+    })();
   }
 }
 
@@ -60,24 +70,14 @@ function update(editorText, jsonText) {
   defaults.editorText = editorText;
   defaults.jsonText = jsonText;
 
-  try {
-    var data = JSON.parse(jsonText);
-    var markup = Mustache.render(editorText, data);
+  var data = JSON.parse(jsonText);
+  var markup = Mustache.render(editorText, data);
 
-    json.classList.remove("error");
-    diff.innerHTML(output, markup);
-    editor.classList.remove("error");
+  //json.classList.remove('error');
+  diff.innerHTML(output, markup);
+  //editor.classList.remove('error');
 
-    if (jsonMirror) {
-      jsonMirror.setValue(jsonText);
-    }
-  } catch (ex) {
-    if (ex.message.indexOf("JSON") === 0) {
-      json.classList.add("error");
-    } else {
-      editor.classList.add("error");
-    }
-  }
+  if (jsonMirror) {}
 }
 
 update();
@@ -111,8 +111,20 @@ function makeCodeMirror(el, name) {
 
 document.querySelector(".run-animation").onclick = runAnimation;
 
+var fav = document.querySelector("favorite-movies-chart");
+
+function renderFavoriteMoviesLoop() {
+  if (fav.render) {
+    fav.render();
+  }
+
+  requestAnimationFrame(renderFavoriteMoviesLoop);
+}
+
+renderFavoriteMoviesLoop();
+
 document.querySelector(".re-render").onclick = function () {
-  document.querySelector("favorite-movies-chart").randomizeAndRender();
+  fav.randomize();
 };
 
 document.querySelector("aside h1 img").onclick = function (ev) {
@@ -131,5 +143,13 @@ document.querySelector(".board").onmouseenter = function (ev) {
     ev.target.color = document.querySelector("input[type=color]").value;
   }
 };
+
+[].concat(_toConsumableArray(document.querySelectorAll("h2[id]"))).forEach(function (el) {
+  return el.onclick = function (ev) {
+    location.hash = el.id;
+  };
+});
+
+//jsonMirror.setValue(jsonText);
 
 },{}]},{},[1]);

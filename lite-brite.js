@@ -21,6 +21,8 @@ var LiteBrite = (function (_HTMLElement) {
 
         this.background = document.createElement("div");
         this.background.classList.add("background");
+
+        document.querySelector("#backgrounds").appendChild(this.background);
       }
     },
     color: {

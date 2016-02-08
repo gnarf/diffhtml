@@ -5,7 +5,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
     <meta name="viewport" content="width=device-width, initial-scale=1">
   
-    <title>diffHTML</title>
+    <title>diffHTML: Easily swap out markup with an intelligent virtual dom</title>
 
     <link rel="stylesheet" href="prism.css">
     <link rel="stylesheet" href="codemirror.css">
@@ -13,8 +13,10 @@
     <link rel="stylesheet" href="favorite-movies-chart.css">
     <link rel="stylesheet" href="lite-brite.css">
 
+    <!--
     <script src="https://use.typekit.net/xze5bef.js"></script>
     <script>try{Typekit.load({ async: true });}catch(e){}</script>
+    -->
   </head>
   <body>
     <aside>
@@ -37,13 +39,13 @@
         <a href="#element">element</a>
         <a href="#add-transition-state">addTransitionState</a>
         <a href="#remove-transition-state">removeTransitionState</a>
-        <a href="#enable-prollyfil">enableProllyfill</a>
 
         <h5>Transitions</h5>
         <hr>
         <a href="#attached-transition">attached</a>
         <a href="#detached-transition">detached</a>
         <a href="#attribute-changed-transition">attributeChanged</a>
+        <a href="#text-changed-transition">textChanged</a>
 
         <h5>Custom Elements</h5>
         <hr>
@@ -62,21 +64,24 @@
     </aside>
 
     <main>
-      <p>
-        <strong>
-        Site is currently a work in progress and I'm adding content when I can. In the meanwhile consult the README for complete documentation.
-        </strong>
-      </p>
-
       <p class="bump">
         <strong>diffHTML</strong> provides an easy way to swap out markup with
-        an intelligent virtual diff, it <i>optionally</i> exposes a Custom
-        Element's polyfill, and supports transitions hooks for element,
-        attribute, and text modifications that can delay future renders until
-        an animation/transition Promise has resolved.
+        an intelligent virtual dom, <i>optionally</i> exposes a Custom
+        Element's polyfill, and supports transition hooks for element,
+        attribute, and text modifications.  These transitions can delay future
+        renders until an animation/transition Promise has resolved.
       </p>
 
-      <pre class="language-javascript code"><code>diff.innerHTML(document.body, '&lt;h1&gt;new markup to change&lt/h1&gt;');</code></pre>
+      <h4>Useful as a library:</h4>
+
+      <p>
+        <pre class="language-javascript code"><code>diff.innerHTML(document.body, `${document.body.innerHTML}&lt;h1&gt;new markup to change&lt/h1&gt;`);</code></pre>
+      </p>
+
+      <h4>...or as a <a href="#prollyfill">prollyfill</a>:</h4>
+
+      <pre class="language-javascript code"><code>document.body.diffInnerHTML += '&lt;h1&gt;new markup to change&lt/h1&gt;';</code></pre>
+
       <p> 
       Compare to <code>innerHTML</code> and <code>outerHTML</code> which do not
       recyle elements by design and instead destroy and recreate the DOM tree
@@ -86,22 +91,23 @@
       <hr>
 
       <h2 id="about">About</h2>
+
       <p>
         Inspired by React and motivated by the Web, this is a low-level tool which aims
         to help web developers write applications. By focusing on the markup
         representing how your application state should look, diffHTML will figure out
         how to modify the page with the fewest amount of operations.
-
-        <h5>Features:</h5>
-
-        <ul>
-          <li>Intelligent virtual DOM diffing and patching of HTML text and elements.</li>
-          <li>Transitions API to hook into element and attribute state changes.</li>
-          <li>Custom Elements in browsers without native support.</li>
-          <li>Offloading diff to Web Workers which provides better rendering performance.</li>
-          <li>Object pooling to avoid GC thrashing and expensive uuid generation.</li>
-        </ul>
       </p>
+
+      <h5>Features:</h5>
+
+      <ul>
+        <li>Intelligent Virtual DOM w/ diffing and patching of HTML text and elements.</li>
+        <li>Transitions API to hook into element and attribute state changes.</li>
+        <li>Custom Elements in browsers without native support.</li>
+        <li>Offloading diff to Web Workers which provides better rendering performance.</li>
+        <li>Object pooling to avoid GC thrashing and expensive uuid generation.</li>
+      </ul>
 
       <h2 id="installing">Installing</h2>
 
@@ -113,7 +119,7 @@
       <pre class="language-javascript"><code>npm install diffhtml</code></pre>
 
       <p>
-      Distributions are commited into the repository, so you can point your
+      Distributions are committed into the repository, so you can point your
       package.json to a specific hash if you wish to lock or test a specific
       version. This is useful for testing out bug fixes or future releases.
       </p>
@@ -130,9 +136,72 @@
 
       <hr>
 
-      <h2 id="outer-html">outerHTML</h2>
+      <h2 id="prollyfill">Enabling the Prollyfill</h2>
 
-      This method diffs an element, including its own tag with markup.
+      <p>
+        It may look like a typo, but <a
+        href="https://twitter.com/slexaxton/status/257543702124306432">prollyfill</a>
+        is the intentional spelling of a cute portmanteau that Alex Sexton came
+        up with to describe a polyfill for a non-existent or potentially future
+        specification.
+      </p>
+
+      <p>
+        Consuming diffHTML as a library is easy with any module loader or the
+        global JavaScript environment, but like jQuery, could an implementation
+        influence the browser standard API?  That is the question I'm hoping to
+        help solve with this project. Even if this solution isn't the best one
+        available, could it be "good enough" to solve a majority of the
+        problems developers face building web applications?
+      </p>
+
+      <p>
+        Throughout the documentation you will see mentions of prollyfill
+        equivalents for the diffHTML library, when you enable this feature you
+        can choose to use them instead.
+      </p>
+
+      <p>
+        If you wish to try an experimental browser API, you can call the
+        following code <i>*note the responsibility of calling this method
+        below*</i>:
+      </p>
+
+      <pre class="language-javascript"><code>diff.enableProllyfill();</code></pre>
+
+
+      <p>
+        <em>Do not invoke this method from a library or plugin, this is meant
+        for application developers who control the entire environment. This is a very intrusive and globally affecting method. See the disclaimer below for more information.</em>
+      </p>
+
+      <p>
+        <em>
+          Disclaimer: By calling this method, you are agreeing that it's okay
+          for diffHTML to modify your browser's HTMLElement constructor,
+          Element.prototype, the document object, and run some logic on your
+          document ready event.
+        </em>
+      </p>
+
+      <hr>
+
+      <h2 id="outer-html">outerHTML<span class="args">(element, markup, [options])</span></h2>
+
+      <a href="#prollyfill" class="polyfill-equiv">
+        <strong>Prollyfill:</strong> <code>HTMLElement.prototype.diffOuterHTML = markup;</code>
+      </a>
+
+      This method diffs an element, including its own tag with markup. Both the
+      element and the markup arguments are required, although the options
+      argument is completely optional. The options available are:
+
+      <ul>
+        <li>
+          <strong>enableWorker</strong> Enable a Worker to process the patches
+          for this element.
+        </li>
+      </ul>
 
       <p>
         This method will take in a string of markup that matches the element root you
@@ -160,8 +229,10 @@ diff.outerHTML(document.documentElement, `
 `);
       </code></pre>
 
+      <p>
       Not all uses of <code>outerHTML</code> involve the entire page, you may
       want to use on a single element when writing a Custom Element class.
+      </p>
 
       <pre class="language-javascript"><code>
 import diff from 'diffhtml';
@@ -185,7 +256,11 @@ document.registerElement('my-custom-element', MyCustomElement);
 
       <hr>
 
-      <h2 id="inner-html">innerHTML</h2>
+      <h2 id="inner-html">innerHTML<span class="args">(element, markup, [options])</span></h2>
+
+      <a href="#prollyfill" class="polyfill-equiv">
+        <strong>Prollyfill:</strong> <code>HTMLElement.prototype.diffInnerHTML = markup;</code>
+      </a>
 
       This method diffs an element's children with markup, but it's own
       attribute changes are ignored.
@@ -204,14 +279,83 @@ console.log(div.firstChild.nodeName); // logs out P
 
       <hr>
 
+      <h2 id="element">element<span class="args">(element, newElement, [options])</span></h2>
+
+      <a href="#prollyfill" class="polyfill-equiv">
+        <strong>Prollyfill:</strong> <code>HTMLElement.prototype.diffElement(newElement);</code>
+      </a>
+
+      <hr>
+
+      <h2 id="add-transition-state">addTransitionState<span class="args">(stateName, callback)</span></h2>
+
+      <a href="#prollyfill" class="polyfill-equiv">
+        <strong>Prollyfill:</strong> <code>document.addTransitionState('attached', attachedFn);</code>
+      </a>
+
+      <hr>
+
+      <h2 id="remove-transition-state">removeTransitionState<span class="args">([stateName], [callback])</span></h2>
+
+      <a href="#prollyfill" class="polyfill-equiv">
+        <strong>Prollyfill:</strong> <code>document.removeTransitionState('attached', attachedFn);</code>
+      </a>
+
+      <hr>
+
+      <h2 id="attached-transition">Attached transition</h2>
+      <hr>
+
+      <h4>TBD</h4>
+
+      <h2 id="detached-transition">Detached transition</h2>
+      <hr>
+
+      <h4>TBD</h4>
+
+      <h2 id="attribute-changed-transition">Attribute changed transition</h2>
+      <hr>
+
+      <h4>TBD</h4>
+
+      <h2 id="text-changed-transition">Text changed transition</h2>
+      <hr>
+
+      <h4>TBD</h4>
+
+      <h2 id="created-callback">Created callback</h2>
+      <hr>
+
+      <h4>TBD</h4>
+
+      <h2 id="attached-callback">Attached callback</h2>
+      <hr>
+
+      <h4>TBD</h4>
+
+      <h2 id="detached-callback">Detached callback</h2>
+      <hr>
+
+      <h4>TBD</h4>
+
+      <h2 id="attribute-changed-callback">Attribute changed callback</h2>
+      <hr>
+
+      <h4>TBD</h4>
+
+      <h2 id="text-changed-callback">Text changed callback</h2>
+      <hr>
+
+      <h4>TBD</h4>
+
       <h2 id="live-template">Live template</h2>
 
-      <div class="example">
-        <p>
-          Feel free to change the markup and JSON data below.  The output will
-          update automatically with the changes.
-        </p>
+      <p>
+        Update the markup and JSON data below and the output will re-render
+        automatically.
+      </p>
 
+      <div class="example">
         <div class="demo" style="clear: both;">
           <pre class="language-handlebars editor"></pre>
           <pre class="language-javascript json"></pre> 
@@ -228,7 +372,7 @@ console.log(div.firstChild.nodeName); // logs out P
 
       <button class="re-render">Randomize and re-render the chart</button>
 
-      <favorite-movies-chart width="100%"></favorite-movies-chart>
+      <favorite-movies-chart width="100%" count="10"></favorite-movies-chart>
 
       <hr>
 
@@ -238,6 +382,8 @@ console.log(div.firstChild.nodeName); // logs out P
       <input type="color" value="#FF217D" id="lite-brite-color">
 
       <div class="board">
+        <div id="backgrounds"></div>
+
         <lite-brite></lite-brite>
         <lite-brite></lite-brite>
         <lite-brite></lite-brite>
@@ -316,7 +462,7 @@ console.log(div.firstChild.nodeName); // logs out P
       <script src="prism.js"></script>
       <script src="codemirror.js"></script>
       <script src="mustache.js"></script>
-      <script src="demos/dist/diffhtml.js"></script>
+      <script src="diffhtml.js"></script>
       <script src="docs-es5.js"></script>
       <script src="favorite-movies-chart.js"></script>
       <script src="randomColor.js"></script>

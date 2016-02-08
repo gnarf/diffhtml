@@ -1,0 +1,10 @@
+{
+  "name": "diffhtml-gh-pages",
+  "scripts": {
+    "build": "browserify -t babelify docs.js -o docs-es5.js"
+  },
+  "dependencies": {
+    "browserify": "*",
+    "babelify": "*"
+  }
+}

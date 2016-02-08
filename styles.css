@@ -13,6 +13,12 @@ body {
   color: #545591;
   font-weight: bold;
   cursor: pointer;
+  outline: none;
+  transition: all linear 250ms;
+}
+.demo button:hover {
+  background-color: #FF217D;
+  color: #FFF;
 }
 pre[class*="language-"] {
   background: #F9FFD9;
@@ -34,6 +40,7 @@ pre.code {
   min-height: 200px;
   transition: background linear .2s;
   margin-bottom: 20px;
+  will-change: transform;
 }
 output {
   margin-top: 8px;
@@ -71,7 +78,10 @@ output {
 footer {
   margin-top: 40px;
 }
-a { text-decoration: none; color: #333; }
+
+aside a { text-decoration: none; }
+a { color: #59646E; }
+
 a span { position: relative; top: -5px; }
 .bump { margin-top: 40px; }
 
@@ -80,7 +90,7 @@ aside {
   position: relative;
   width: 30%;
   height: 1400px;
-  padding-top: 0;
+  padding-top: 20px;
 }
 
 aside.fixed {
@@ -110,6 +120,10 @@ aside h1 img {
   right: 64%;
 }
 
+h3 {
+  color: #59646E;
+}
+
 main {
   display: inline-block;
   width: 70%;
@@ -124,7 +138,7 @@ main {
   border-left: 4px solid #EAF3BE;
 }
 
-main > pre {
+main > pre, main > iframe {
   box-shadow: 8px 7px 3px rgba(255, 33, 125, 0.05);
 }
 
@@ -167,6 +181,20 @@ nav a {
   line-height: 42px;
   border-bottom: 3px solid transparent;
   transition: border linear 100ms;
+  position: relative;
+}
+
+nav a:after {
+  content: ' ';
+  display: block;
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  background: linear-gradient(to right, #F9FFD9, rgba(0, 183, 255, 0));
+  width: 60%;
+  z-index: 100;
+  height: 45px;
 }
 
 nav a:hover {
@@ -290,3 +318,35 @@ strong.board-label {
   padding-bottom: 20px;
   position: relative;
 }
+.args {
+  color: #CCC;
+}
+
+h2[id] { cursor: pointer; position: relative; }
+h2[id]:hover:before {
+  content: '#';
+  color: #CCC;
+  position: absolute;
+  left: -30px;
+  padding-right: 30px;
+  display: block;
+  top: 0px;
+}
+
+#backgrounds { display: none; }
+
+.polyfill-equiv {
+  padding: 10px;
+  border-radius: 5px;
+  font-size: 14px;
+  padding-top: 0px;
+  display: block;
+  text-decoration: none;
+}
+
+.polyfill-equiv code {
+  color: #80C338;
+  border-bottom: 2px solid #CCCCCC;
+}
+
+h5 { color: #545454; }
