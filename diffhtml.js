@@ -202,6 +202,7 @@ var TransitionStateError = exports.TransitionStateError = function (_Error) {
  * Identifies an error with registering an element.
  */
 
+
 var DOMException = exports.DOMException = function (_Error2) {
   _inherits(DOMException, _Error2);
 
@@ -223,12 +224,12 @@ var DOMException = exports.DOMException = function (_Error2) {
 },{}],5:[function(_dereq_,module,exports){
 'use strict';
 
-var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol ? "symbol" : typeof obj; };
-
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
 exports.DOMException = exports.TransitionStateError = undefined;
+
+var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol ? "symbol" : typeof obj; };
 
 var _errors = _dereq_('./errors');
 
@@ -682,6 +683,13 @@ function make(node) {
         entry.childNodes[entry.childNodes.length] = newNode;
       }
     }
+  }
+
+  // Prune out whitespace from between HTML tags in markup.
+  if (entry.nodeName === 'html') {
+    entry.childNodes = entry.childNodes.filter(function (el) {
+      return el.nodeName === 'head' || el.nodeName === 'body';
+    });
   }
 
   if (_custom.components[entry.nodeName]) {
@@ -1989,7 +1997,7 @@ function cleanMemory(makeNode) {
   // Clean out unused elements.
   if (makeNode && makeNode.nodes) {
     for (var uuid in makeNode.nodes) {
-      if (!pools.elementObject._uuid[uuid]) {
+      if (!pools.elementObject.cache.uuid[uuid]) {
         delete makeNode.nodes[uuid];
       }
     }
@@ -2274,6 +2282,80 @@ function makeParser() {
         }
       }
 
+      // This is an entire document, so only allow the HTML children to be
+      // body or head.
+      if (root.childNodes.length && root.childNodes[0].nodeName === 'html') {
+        (function () {
+          // Store elements from before body end and after body end.
+          var head = { before: [], after: [] };
+          var body = { after: [] };
+          var beforeHead = true;
+          var beforeBody = true;
+          var HTML = root.childNodes[0];
+
+          // Iterate the children and store elements in the proper array for
+          // later concat, replace the current childNodes with this new array.
+          HTML.childNodes = HTML.childNodes.filter(function (el) {
+            // If either body or head, allow as a valid element.
+            if (el.nodeName === 'body' || el.nodeName === 'head') {
+              if (el.nodeName === 'head') {
+                beforeHead = false;
+              }
+
+              if (el.nodeName === 'body') {
+                beforeBody = false;
+              }
+
+              return true;
+            }
+            // Not a valid nested HTML tag element, move to respective container.
+            else if (el.nodeType === 1) {
+                if (beforeHead && beforeBody) {
+                  head.before.push(el);
+                } else if (!beforeHead && beforeBody) {
+                  head.after.push(el);
+                } else if (!beforeBody) {
+                  body.after.push(el);
+                }
+              }
+          });
+
+          // Ensure the first element is the HEAD tag.
+          if (!HTML.childNodes[0] || HTML.childNodes[0].nodeName !== 'head') {
+            var headInstance = pools.elementObject.get();
+            headInstance.nodeName = 'head';
+            headInstance.childNodes.length = 0;
+            headInstance.attributes.length = 0;
+
+            var existing = headInstance.childNodes;
+            existing.unshift.apply(existing, head.before);
+            existing.push.apply(existing, head.after);
+
+            HTML.childNodes.unshift(headInstance);
+          } else {
+            var existing = HTML.childNodes[0].childNodes;
+            existing.unshift.apply(existing, head.before);
+            existing.push.apply(existing, head.after);
+          }
+
+          // Ensure the second element is the body tag.
+          if (!HTML.childNodes[1] || HTML.childNodes[1].nodeName !== 'body') {
+            var bodyInstance = pools.elementObject.get();
+            bodyInstance.nodeName = 'body';
+            bodyInstance.childNodes.length = 0;
+            bodyInstance.attributes.length = 0;
+
+            var existing = bodyInstance.childNodes;
+            existing.push.apply(existing, body.after);
+
+            HTML.childNodes.push(bodyInstance);
+          } else {
+            var existing = HTML.childNodes[1].childNodes;
+            existing.push.apply(existing, body.after);
+          }
+        })();
+      }
+
       return root;
     }
   };
@@ -2312,87 +2394,83 @@ function createPool(name, opts) {
   var size = opts.size;
   var fill = opts.fill;
 
-  var free = [];
-  var allocated = [];
-  var protect = [];
+  var cache = {
+    free: [],
+    allocated: [],
+    protected: [],
+    uuid: {}
+  };
 
   // Prime the cache with n objects.
   for (var i = 0; i < size; i++) {
-    free[i] = fill();
+    cache.free.push(fill());
   }
 
   return {
-    _free: free,
-    _allocated: allocated,
-    _protected: protect,
-    _uuid: {},
+    cache: cache,
 
-    get: function getPool() {
+    get: function get() {
       var obj = null;
-      var freeLength = free.length;
+      var freeLength = cache.free.length;
       var minusOne = freeLength - 1;
 
       if (freeLength) {
-        obj = free[minusOne];
-        free.length = minusOne;
+        obj = cache.free[minusOne];
+        cache.free.length = minusOne;
       } else {
         obj = fill();
       }
 
-      allocated.push(obj);
+      cache.allocated.push(obj);
 
       return obj;
     },
-
-    protect: function protectPool(value) {
-      var idx = allocated.indexOf(value);
+    protect: function protect(value) {
+      var idx = cache.allocated.indexOf(value);
 
       // Move the value out of allocated, since we need to protect this from
       // being free'd accidentally.
-      if (protect.indexOf(value) === -1) {
-        protect.push(idx === -1 ? value : allocated.splice(idx, 1)[0]);
+      if (cache.protected.indexOf(value) === -1) {
+        cache.protected.push(idx === -1 ? value : cache.allocated.splice(idx, 1)[0]);
       }
 
       // If we're protecting an element object, push the uuid into a lookup
       // table.
       if (name === 'elementObject') {
-        this._uuid[value.uuid] = value;
+        cache.uuid[value.uuid] = value;
       }
     },
-
-    unprotect: function unprotectPool(value) {
-      var idx = protect.indexOf(value);
+    unprotect: function unprotect(value) {
+      var idx = cache.protected.indexOf(value);
 
       if (idx !== -1) {
-        var obj = protect.splice(idx, 1)[0];
+        var obj = cache.protected.splice(idx, 1)[0];
 
         if (obj) {
-          free.push(obj);
+          cache.free.push(obj);
         }
 
         if (name === 'elementObject') {
-          delete this._uuid[value.uuid];
+          delete cache.uuid[value.uuid];
         }
       }
     },
+    freeAll: function freeAll() {
+      var freeLength = cache.free.length;
+      var minusOne = freeLength - 1;
+      var reAlloc = cache.allocated.slice(0, size - minusOne);
 
-    freeAll: function freeAllPool() {
-      var _this = this;
-
-      var reAlloc = allocated.slice(0, size - free.length);
-
-      free.push.apply(free, reAlloc);
-      allocated.length = 0;
+      cache.free.push.apply(cache.free, reAlloc);
+      cache.allocated.length = 0;
 
       if (name === 'elementObject') {
         reAlloc.forEach(function (element) {
-          return delete _this._uuid[element.uuid];
+          return delete cache.uuid[element.uuid];
         });
       }
     },
-
-    free: function freePool(value) {
-      var idx = allocated.indexOf(value);
+    free: function free(value) {
+      var idx = cache.allocated.indexOf(value);
 
       // Already freed.
       if (idx === -1) {
@@ -2400,11 +2478,11 @@ function createPool(name, opts) {
       }
 
       // Only put back into the free queue if we're under the size.
-      if (free.length < size) {
-        free.push(value);
+      if (cache.free.length < size) {
+        cache.free.push(value);
       }
 
-      allocated.splice(idx, 1);
+      cache.allocated.splice(idx, 1);
     }
   };
 }
