@@ -38,6 +38,8 @@
         <a href="#element">element</a>
         <a href="#add-transition-state">addTransitionState</a>
         <a href="#remove-transition-state">removeTransitionState</a>
+        <a href="#register-element">registerElement</a>
+        <a href="#release">release</a>
 
         <h5>Transitions</h5>
         <hr>
@@ -351,8 +353,7 @@ newDiv.appendChild(newP);
 // Diff + patch the oldDiv with the newDiv.
 diff.element(oldDiv, newDiv);
 
-console.log(div.firstChild.nodeName); // logs out P 
-</code></pre>
+console.log(div.firstChild.nodeName); // logs out P</code></pre>
 
       <hr>
 
