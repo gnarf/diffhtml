@@ -13,10 +13,8 @@
     <link rel="stylesheet" href="favorite-movies-chart.css">
     <link rel="stylesheet" href="lite-brite.css">
 
-    <!--
     <script src="https://use.typekit.net/xze5bef.js"></script>
     <script>try{Typekit.load({ async: true });}catch(e){}</script>
-    -->
   </head>
   <body>
     <aside>
@@ -310,8 +308,10 @@ document.registerElement('my-custom-element', MyCustomElement);
         <strong>Prollyfill:</strong> <code>HTMLElement.prototype.diffInnerHTML = markup;</code>
       </a>
 
-      This method diffs an element's children with markup, but it's own
-      attribute changes are ignored.
+      <p>
+        This method diffs an element's children with markup, but it's own
+        attribute changes are ignored.
+      </p>
 
       <pre class="language-javascript"><code>
 import diff from 'diffhtml';
@@ -330,8 +330,29 @@ console.log(div.firstChild.nodeName); // logs out P
       <h2 id="element">element<span class="args">(element, newElement, <a href="#options">[options]</a>)</span></h2>
 
       <a href="#prollyfill" class="polyfill-equiv">
-        <strong>Prollyfill:</strong> <code>HTMLElement.prototype.diffElement(newElement);</code>
+        <strong>Prollyfill:</strong> <code>HTMLElement.prototype.diffElement(newElement, [options]);</code>
       </a>
+
+      <pre class="language-javascript"><code>
+// Bring in the library using ES6.
+import diff from 'diffhtml';
+
+// Create the fixture elements.
+var oldDiv = document.createElement('div');
+var newDiv = document.createElement('div');
+
+// Add in a paragraph tag to newDiv with the `textContent` set to 'Hello world'
+var newP = document.createElement('p');
+newP.appendChild(document.createTextNode('Hello world'));
+
+// Add this into the newDiv.
+newDiv.appendChild(newP);
+
+// Diff + patch the oldDiv with the newDiv.
+diff.element(oldDiv, newDiv);
+
+console.log(div.firstChild.nodeName); // logs out P 
+</code></pre>
 
       <hr>
 
