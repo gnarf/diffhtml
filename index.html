@@ -34,6 +34,7 @@
 
         <h4>API</h4>
         <hr>
+        <a href="#options">[Options]</a>
         <a href="#outer-html">outerHTML</a>
         <a href="#inner-html">innerHTML</a>
         <a href="#element">element</a>
@@ -186,7 +187,61 @@
 
       <hr>
 
-      <h2 id="outer-html">outerHTML<span class="args">(element, markup, [options])</span></h2>
+
+      <h2 id="options">[Optional] Options</h2>
+
+      <p>
+        This is the main documentation for the available options that can be
+        passed to diffHTML.
+      </p>
+
+      <ul>
+        <li>
+          <strong>enableWorker</strong> <i class="type">Boolean</i> Enable a Worker to process the patches
+          for this element.
+          
+          <pre class="language-javascript"><code>diff.outerHTML(document.body, `&lt;body&gt;&lt;/body&gt;`, {
+  enableWorker: true
+});</code></pre>
+
+          <a href="#prollyfill" class="polyfill-equiv">
+            <strong>Prollyfill:</strong> <code>document.ENABLE_WORKER = true;</code>
+          </a>
+
+          <p>
+            <u>Please note:</u> This is an experimental feature that may or may
+            not work perfectly for you.
+          </p>
+          <p>
+            Since it can be enabled on a per-component basis, it may make sense
+            to opt-in for some high performance chart or grid, while
+            re-rendering the entire page is done on the UI thread to avoid
+            potential race conditions.
+          </p>
+        </li>
+
+        <li>
+          <strong>inner</strong> <i class="type">Boolean</i> Used when diffing
+          against another element, this option allows you to specify if you're
+          comparing the children of an element or the actual element itself.
+
+          <pre class="lang-javascript"><code>diff.element(document.body, newBodyChildren, {
+  inner: true
+});</code></pre>
+
+          <a href="#prollyfill" class="polyfill-equiv">
+            <strong>Prollyfill:</strong> <code>document.body.diffElement(newBodyChildren, {
+  inner: true
+});</code>
+          </a>
+
+
+        </li>
+      </ul>
+
+      <hr>
+
+      <h2 id="outer-html">outerHTML<span class="args">(element, markup, <a href="#options">[options]</a>)</span></h2>
 
       <a href="#prollyfill" class="polyfill-equiv">
         <strong>Prollyfill:</strong> <code>HTMLElement.prototype.diffOuterHTML = markup;</code>
@@ -194,14 +249,7 @@
 
       This method diffs an element, including its own tag with markup. Both the
       element and the markup arguments are required, although the options
-      argument is completely optional. The options available are:
-
-      <ul>
-        <li>
-          <strong>enableWorker</strong> Enable a Worker to process the patches
-          for this element.
-        </li>
-      </ul>
+      argument is completely optional.
 
       <p>
         This method will take in a string of markup that matches the element root you
@@ -256,7 +304,7 @@ document.registerElement('my-custom-element', MyCustomElement);
 
       <hr>
 
-      <h2 id="inner-html">innerHTML<span class="args">(element, markup, [options])</span></h2>
+      <h2 id="inner-html">innerHTML<span class="args">(element, markup, <a href="#options">[options]</a>)</span></h2>
 
       <a href="#prollyfill" class="polyfill-equiv">
         <strong>Prollyfill:</strong> <code>HTMLElement.prototype.diffInnerHTML = markup;</code>
@@ -279,7 +327,7 @@ console.log(div.firstChild.nodeName); // logs out P
 
       <hr>
 
-      <h2 id="element">element<span class="args">(element, newElement, [options])</span></h2>
+      <h2 id="element">element<span class="args">(element, newElement, <a href="#options">[options]</a>)</span></h2>
 
       <a href="#prollyfill" class="polyfill-equiv">
         <strong>Prollyfill:</strong> <code>HTMLElement.prototype.diffElement(newElement);</code>

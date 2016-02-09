@@ -115,9 +115,10 @@ aside h1 {
 }
 
 aside h1 img {
-  position: absolute;
+  position: fixed;
   z-index: 50;
-  right: 64%;
+  left: 20px;
+  width: 70px;
 }
 
 h3 {
@@ -184,7 +185,7 @@ nav a {
   position: relative;
 }
 
-nav a:after {
+nav a:hover:after {
   content: ' ';
   display: block;
   position: absolute;
@@ -350,3 +351,11 @@ h2[id]:hover:before {
 }
 
 h5 { color: #545454; }
+
+i.type {
+  color: #FF217D;
+}
+
+a[href='#options'] {
+  color: #A7A7AB;
+}
