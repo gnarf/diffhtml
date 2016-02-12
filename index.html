@@ -32,7 +32,8 @@
 
         <h4>API</h4>
         <hr>
-        <a href="#options">[Options]</a>
+        <a href="#options">Options</a>
+        <hr>
         <a href="#outer-html">outerHTML</a>
         <a href="#inner-html">innerHTML</a>
         <a href="#element">element</a>
@@ -48,13 +49,9 @@
         <a href="#attribute-changed-transition">attributeChanged</a>
         <a href="#text-changed-transition">textChanged</a>
 
-        <h5>Custom Elements</h5>
         <hr>
-        <a href="#created-callback">createdCallback</a>
-        <a href="#attached-callback">attachedCallback</a>
-        <a href="#detached-callback">detachedCallback</a>
-        <a href="#attribute-changed-callback">attributeChangedCallback</a>
-        <a href="#text-changed-callback">textChangedCallback</a>
+        <a href="#custom-elements">Custom Elements</a>
+        <hr>
 
         <h4>Demos</h4>
         <hr>
@@ -188,11 +185,11 @@
       <hr>
 
 
-      <h2 id="options">[Optional] Options</h2>
+      <h2 id="options">Options</h2>
 
       <p>
         This is the main documentation for the available options that can be
-        passed to diffHTML.
+        passed to diffHTML. They are entirely optional. 
       </p>
 
       <ul>
@@ -393,20 +390,53 @@ console.log(div.firstChild.nodeName); // logs out P</code></pre>
 
       <h4>TBD</h4>
 
-      <h2 id="created-callback">Created callback</h2>
       <hr>
 
-      <h4>TBD</h4>
+      <h2 id="custom-elements">Custom Elements</h2>
 
-      <h2 id="attached-callback">Attached callback</h2>
-      <hr>
+      <p>
+        <em>"Web Components"</em> is an umbrella term for a various set
+        of specifications that are geared towards authoring new HTML elements.
+        <em>Custom Elements</em> are one of these specifications that are
+        implemented partially or in full by various evergreen browsers. They
+        allow a developer to pick a new HTML element name (that must contain a
+        dash) and register a class containing lifecyle methods.
+      </p>
+      <p>
+        This is quite sufficient for building progressively enhanceable
+        applications.  diffHTML will attempt to polyfill all the major popular
+        browsers with support, so you can use the raw ES6 class form extending
+        <code>HTMLElement</code>:
+      </p>
 
-      <h4>TBD</h4>
+      <pre class="lang-javascript"><code>
+class CustomElement extends HTMLElement {
+  createdCallback() {
+    console.log('diffHTML or your browser has created the element');
+  }
 
-      <h2 id="detached-callback">Detached callback</h2>
-      <hr>
+  attachedCallback() {
+    console.log('The element is in the DOM');
+  }
 
-      <h4>TBD</h4>
+  detachedCallback() {
+    console.log('The element has left the DOM');
+  }
+
+  attributeChangedCallback(attributeName, oldValue, newValue) {
+    console.log('An attribute has changed on the element');
+  }
+  
+  textChangedCallback(oldValue, newValue) {
+    console.log('Only available with diffHTML, would be nice in the specification');
+  }
+}
+      </code></pre>
+
+      <p>
+        Whenever you initialize a DOM plugin or bind any kind of event in your
+        created/attached callbacks you must unbind in your detached callback.
+      </p>
 
       <h2 id="attribute-changed-callback">Attribute changed callback</h2>
       <hr>

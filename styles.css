@@ -27,7 +27,15 @@ pre[class*="language-"] {
 pre {
   word-wrap: break-word; 
 }
+code {
+  background: #FBFBFB;
+  padding: 2px 4px;
+  border-bottom: 1px solid #666;
+}
 pre code {
+  padding: 0;
+  border-bottom: none;
+  background: #F9FFD9;
   width: 100%;
   display: block;
 }
@@ -107,11 +115,12 @@ aside span {
 }
 
 aside h1 {
-  font-size: 240%; 
+  font-size: 240%;
   text-align: right;
   color: #80C338;
   margin-bottom: 4px;
   padding-right: 20px;
+  position: relative;
 }
 
 aside h1 img {
@@ -119,6 +128,23 @@ aside h1 img {
   z-index: 50;
   left: 20px;
   width: 70px;
+}
+
+aside h1:after {
+  content: "Back to Top";
+  display: block;
+  position: fixed;
+  left: 100px;
+  width: 150px;
+  background-color: rgb(228, 239, 174);
+  height: 20px;
+  font-size: 15px;
+  text-align: left;
+  padding: 10px;
+  border-radius: 5px;
+  color: #666;
+  text-shadow: 3px 3px 0px rgba(0, 0, 0, 0.05);
+  box-shadow: inset 0px 0px 2px #D4DEA4;
 }
 
 h3 {
@@ -152,23 +178,24 @@ main hr {
 
 main h2 {
   color: #80C338;
-  margin-top: 28px;
+  padding-top: 28px;
 }
 
 nav {
   display: block;
   text-align: right;
-  margin-top: 0; 
-
-  position: relative;
+  margin-top: 0;
+  position: absolute;
   width: 100%;
   bottom: 0;
-  top: 0;
+  top: 153px;
   overflow-y: auto;
   padding: 20px;
+  z-index: 999999999;
+  background-color: #F9FFD9;
 }
 nav h4 {
-  color: #9C9C9C;
+  color: #666666;
   font-weight: normal;
   font-size: 22px;
   margin-bottom: 11px;
@@ -346,7 +373,7 @@ h2[id]:hover:before {
   left: -30px;
   padding-right: 30px;
   display: block;
-  top: 0px;
+  top: 28px;
 }
 
 #backgrounds { display: none; }
@@ -371,6 +398,7 @@ i.type {
   color: #FF217D;
 }
 
+a[href='#custom-elements'],
 a[href='#options'] {
-  color: #A7A7AB;
+  color: #80C338;
 }

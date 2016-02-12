@@ -1947,6 +1947,9 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 var pools = _pools2.pools;
 var makeNode = _make2.default;
 
+var elementObject = pools.elementObject;
+var attributeObject = pools.attributeObject;
+
 /**
  * Ensures that an element is not recycled during a render cycle.
  *
@@ -1972,9 +1975,10 @@ function protectElement(element) {
  * @return
  */
 function unprotectElement(element, makeNode) {
-  pools.elementObject.unprotect(element);
+  elementObject.unprotect(element);
+  elementObject.cache.uuid.delete(element.uuid);
 
-  element.attributes.forEach(pools.attributeObject.unprotect, pools.attributeObject);
+  element.attributes.forEach(attributeObject.unprotect, attributeObject);
 
   if (element.childNodes) {
     element.childNodes.forEach(function (node) {
@@ -1993,18 +1997,19 @@ function unprotectElement(element, makeNode) {
  * Recycles all unprotected allocations.
  */
 function cleanMemory(makeNode) {
-  // Free all memory after each iteration.
-  pools.attributeObject.freeAll();
-  pools.elementObject.freeAll();
-
   // Clean out unused elements.
   if (makeNode && makeNode.nodes) {
     for (var uuid in makeNode.nodes) {
-      if (!pools.elementObject.cache.uuid[uuid]) {
+      if (!elementObject.cache.uuid.has(uuid)) {
         delete makeNode.nodes[uuid];
       }
     }
   }
+
+  elementObject.cache.allocated.forEach(function (v) {
+    return elementObject.cache.free.push(v);
+  });
+  elementObject.cache.allocated.clear();
 }
 
 },{"../node/make":6,"../util/pools":17}],16:[function(_dereq_,module,exports){
@@ -2383,6 +2388,7 @@ var _uuid3 = _interopRequireDefault(_uuid2);
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 var uuid = _uuid3.default;
+
 var pools = exports.pools = {};
 var count = exports.count = 10000;
 
@@ -2401,7 +2407,7 @@ function createPool(name, opts) {
     free: [],
     allocated: new Set(),
     protected: new Set(),
-    uuid: {}
+    uuid: new Set()
   };
 
   // Prime the cache with n objects.
@@ -2422,7 +2428,7 @@ function createPool(name, opts) {
       cache.protected.add(value);
 
       if (name === 'elementObject') {
-        cache.uuid[value.uuid] = value;
+        cache.uuid.add(value.uuid);
       }
     },
     unprotect: function unprotect(value) {
@@ -2430,44 +2436,6 @@ function createPool(name, opts) {
         cache.protected.delete(value);
         cache.free.push(value);
       }
-
-      if (name === 'elementObject') {
-        delete cache.uuid[value.uuid];
-      }
-    },
-    freeAll: function freeAll() {
-      var freeLength = cache.free.length;
-      var minusOne = freeLength - 1;
-
-      // All of this could go away if we could figure out `Array.from` within
-      // a PhantomJS web-worker.
-      var reAlloc = [];
-      cache.allocated.forEach(function (v) {
-        return reAlloc.push(v);
-      });
-      reAlloc = reAlloc.slice(0, size - minusOne);
-
-      cache.free.push.apply(cache.free, reAlloc);
-      cache.allocated.clear();
-
-      if (name === 'elementObject') {
-        reAlloc.forEach(function (element) {
-          return delete cache.uuid[element.uuid];
-        });
-      }
-    },
-    free: function free(value) {
-      // Already freed.
-      if (!cache.allocated.has(value)) {
-        return;
-      }
-
-      // Only put back into the free queue if we're under the size.
-      if (cache.free.length < size) {
-        cache.free.push(value);
-      }
-
-      cache.allocated.delete(value);
     }
   };
 }
@@ -2556,7 +2524,7 @@ function completeRender(element, elementMeta) {
     if (elementMeta.renderBuffer) {
       renderNext(elementMeta);
     } else {
-      _tree.TreeCache.forEach(function (elementMeta) {
+      _tree.TreeCache.forEach(function iterateTreeCache(elementMeta) {
         if (!stopLooping && elementMeta.renderBuffer) {
           renderNext(elementMeta);
           stopLooping = true;
