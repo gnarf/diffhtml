@@ -12,17 +12,19 @@
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="favorite-movies-chart.css">
     <link rel="stylesheet" href="lite-brite.css">
+    <link rel="stylesheet" href="octicons.css">
 
     <script src="https://use.typekit.net/xze5bef.js"></script>
     <script>try{Typekit.load({ async: true });}catch(e){}</script>
   </head>
   <body>
     <aside>
-      <a href="http://github.com/tbranyen/diffhtml">
         <h1><img width="20%" src="kiwi.png">diffHTML</h1>
-        <span>GitHub Repository</span>
-      </a>
-
+        <a href="http://github.com/tbranyen/diffhtml" class="github">
+          <span class="octicon octicon-mark-github"></span>
+          <span class="text">GitHub Repository</span>
+        </a>
+      
       <nav>
         <h4>Basics</h4>
         <hr>
@@ -438,15 +440,7 @@ class CustomElement extends HTMLElement {
         created/attached callbacks you must unbind in your detached callback.
       </p>
 
-      <h2 id="attribute-changed-callback">Attribute changed callback</h2>
       <hr>
-
-      <h4>TBD</h4>
-
-      <h2 id="text-changed-callback">Text changed callback</h2>
-      <hr>
-
-      <h4>TBD</h4>
 
       <h2 id="live-template">Live template</h2>
 

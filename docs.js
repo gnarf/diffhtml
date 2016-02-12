@@ -136,10 +136,10 @@ function renderFavoriteMoviesLoop() {
 renderFavoriteMoviesLoop();
 
 document.querySelector('.re-render').onclick = function() {
-  fav.randomize();
+  fav.makeData();
 }
 
-document.querySelector('aside h1 img').onclick = function(ev) {
+document.querySelector('aside h1').onclick = function(ev) {
   ev.preventDefault();
   document.body.scrollTop = 0;
 };
