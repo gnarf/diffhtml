@@ -154,6 +154,7 @@ aside h1:after {
   margin-top: -11px;
   padding-top: 7px;
   z-index: -1;
+  top: 80px;
 }
 
 h3 {
@@ -348,7 +349,7 @@ favorite-movies-chart svg {
     display: block;
     width: 100%;
     position: fixed;
-    top: 0;
+    top: 105px;
     left: 0;
     right: 0;
     height: 120px;
