@@ -156,6 +156,8 @@ document.querySelector('.board').onmouseenter = function(ev) {
   }
 };
 
-[...document.querySelectorAll('h2[id]')].forEach(el => el.onclick = (ev) => {
+var h2s = document.querySelectorAll('h2[id]');
+
+[...h2s].forEach(el => el.onclick = (ev) => {
   location.hash = el.id;
 });
