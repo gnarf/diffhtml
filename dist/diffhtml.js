@@ -18,29 +18,12 @@ var components = exports.components = {};
  * @param nodeName - The HTML nodeName to use for the Custom Element
  * @param element - The element to upgrade
  * @param descriptor - The virtual node backing the element
+ *
  * @return {Boolean} successfully upgraded
  */
 function upgrade(nodeName, element, descriptor) {
-  // Value of the `is` attribute, if it exists.
-  var isAttr = null;
-
-  // Check for the `is` attribute. It has a known bug where it cannot be
-  // applied dynamically.
-  if (!components[nodeName] && Array.isArray(descriptor.attributes)) {
-    descriptor.attributes.some(function (attr, idx) {
-      if (attr.name === 'is') {
-        isAttr = attr.value;
-        return true;
-      }
-    });
-  }
-
-  // Hack around the `is` attribute being unable to be set dynamically.
-  if (isAttr && components[isAttr]) {
-    nodeName = isAttr;
-  }
-
-  var CustomElement = components[nodeName];
+  // Substitute the nodeName if the extends attribute is present.
+  var CustomElement = components[descriptor.is || nodeName];
 
   if (!CustomElement) {
     return false;
@@ -719,6 +702,12 @@ function make(node) {
         attr.name = attributes[i].name;
         attr.value = attributes[i].value;
 
+        if (attr.name === 'key') {
+          entry.key = attr.value;
+        } else if (attr.name === 'is') {
+          entry.is = attr.value;
+        }
+
         entry.attributes[entry.attributes.length] = attr;
       }
     }
@@ -1063,6 +1052,8 @@ exports.default = sync;
 
 var _pools2 = _dereq_('../util/pools');
 
+function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } }
+
 var pools = _pools2.pools;
 
 var slice = Array.prototype.slice;
@@ -1120,6 +1111,10 @@ function sync(oldTree, newTree, patches) {
   var nodeName = newTree.nodeName;
   var newIsTextNode = nodeName === '#text';
 
+  // Replace the key and is attributes.
+  oldTree.key = newTree.key;
+  oldTree.is = newTree.is;
+
   // If the element we're replacing is totally different from the previous
   // replace the entire element, don't bother investigating children.
   if (oldTree.nodeName !== newTree.nodeName) {
@@ -1171,45 +1166,88 @@ function sync(oldTree, newTree, patches) {
 
   // Remove these elements.
   if (oldChildNodesLength > childNodesLength) {
-    // For now just splice out the end items.
-    var diff = oldChildNodesLength - childNodesLength;
-    var toRemove = oldChildNodes.splice(oldChildNodesLength - diff, diff);
+    (function () {
+      // For now just splice out the end items.
+      var diff = oldChildNodesLength - childNodesLength;
+      var shallowClone = [].concat(_toConsumableArray(oldChildNodes));
+      var offset = 0;
+      var toRemove = null;
 
-    oldChildNodesLength = oldChildNodes.length;
-
-    if (oldChildNodesLength === 0 && childNodesLength === 0) {
-      patches.push({
-        __do__: REMOVE_ELEMENT_CHILDREN,
-        element: oldTree,
-        toRemove: toRemove
+      // Ensure keys exist for all the old & new elements.
+      var newHasKeys = childNodes.some(function (childNode) {
+        return !childNode.is;
       });
-    } else {
-      for (var _i = 0; _i < toRemove.length; _i++) {
-        // Remove the element, this happens before the splice so that we
-        // still have access to the element.
+
+      // There needs to be keys to diff, if not, there's no point in checking.
+      if (!newHasKeys) {
+        toRemove = oldChildNodes.splice(oldChildNodesLength - diff, diff);
+      }
+      // This is an expensive operation so we do the above check to ensure that a
+      // key was specified.
+      else {
+          // If the original childNodes contain a key attribute, use this to
+          // compare over the naive method below.
+          toRemove = shallowClone.reduce(function (toRemove, oldChildNode, index) {
+            var newChildNode = childNodes[index + offset];
+            var oldIndex = oldChildNodes.indexOf(oldChildNode);
+
+            // We've found all the removals.
+            if (toRemove.length === diff) {
+              return toRemove;
+            }
+            // If we're still iterating and ran out of items.
+            else if (!newChildNode) {
+                offset += 1;
+                toRemove.push(oldChildNode);
+                oldChildNodes.splice(oldIndex, 1);
+              }
+              // The keys do not match.
+              else if (oldChildNode.key !== newChildNode.key) {
+                  offset += 1;
+                  toRemove.push(oldChildNode);
+                  oldChildNodes.splice(oldIndex, 1);
+                }
+
+            return toRemove;
+          }, []);
+        }
+
+      oldChildNodesLength = oldChildNodes.length;
+
+      if (childNodesLength === 0) {
         patches.push({
-          __do__: MODIFY_ELEMENT,
-          old: toRemove[_i]
+          __do__: REMOVE_ELEMENT_CHILDREN,
+          element: oldTree,
+          toRemove: toRemove
+        });
+      } else {
+        // Remove the element, this happens before the splice so that we still
+        // have access to the element.
+        toRemove.forEach(function (old) {
+          return patches.push({
+            __do__: MODIFY_ELEMENT,
+            old: old
+          });
         });
       }
-    }
+    })();
   }
 
   // Replace elements if they are different.
   if (oldChildNodesLength >= childNodesLength) {
-    for (var _i2 = 0; _i2 < childNodesLength; _i2++) {
-      if (oldChildNodes[_i2].nodeName !== childNodes[_i2].nodeName) {
+    for (var _i = 0; _i < childNodesLength; _i++) {
+      if (oldChildNodes[_i].nodeName !== childNodes[_i].nodeName) {
         // Add to the patches.
         patches.push({
           __do__: MODIFY_ELEMENT,
-          old: oldChildNodes[_i2],
-          new: childNodes[_i2]
+          old: oldChildNodes[_i],
+          new: childNodes[_i]
         });
 
         // Replace the internal tree's point of view of this element.
-        oldChildNodes[_i2] = childNodes[_i2];
+        oldChildNodes[_i] = childNodes[_i];
       } else {
-        sync(oldChildNodes[_i2], childNodes[_i2], patches);
+        sync(oldChildNodes[_i], childNodes[_i], patches);
       }
     }
   }
@@ -1225,17 +1263,17 @@ function sync(oldTree, newTree, patches) {
     if (newLength > oldLength) {
       var toAdd = slice.call(attributes, oldLength);
 
-      for (var _i3 = 0; _i3 < toAdd.length; _i3++) {
+      for (var _i2 = 0; _i2 < toAdd.length; _i2++) {
         var change = {
           __do__: MODIFY_ATTRIBUTE,
           element: oldTree,
-          name: toAdd[_i3].name,
-          value: toAdd[_i3].value
+          name: toAdd[_i2].name,
+          value: toAdd[_i2].value
         };
 
         var attr = pools.attributeObject.get();
-        attr.name = toAdd[_i3].name;
-        attr.value = toAdd[_i3].value;
+        attr.name = toAdd[_i2].name;
+        attr.value = toAdd[_i2].value;
 
         pools.attributeObject.protect(attr);
 
@@ -1251,19 +1289,19 @@ function sync(oldTree, newTree, patches) {
     if (oldLength > newLength) {
       var _toRemove = slice.call(oldTree.attributes, newLength);
 
-      for (var _i4 = 0; _i4 < _toRemove.length; _i4++) {
+      for (var _i3 = 0; _i3 < _toRemove.length; _i3++) {
         var _change = {
           __do__: MODIFY_ATTRIBUTE,
           element: oldTree,
-          name: _toRemove[_i4].name,
+          name: _toRemove[_i3].name,
           value: undefined
         };
 
         // Remove the attribute from the virtual node.
-        var _removed = oldTree.attributes.splice(_i4, 1);
+        var _removed = oldTree.attributes.splice(_i3, 1);
 
-        for (var _i5 = 0; _i5 < _removed.length; _i5++) {
-          pools.attributeObject.unprotect(_removed[_i5]);
+        for (var _i4 = 0; _i4 < _removed.length; _i4++) {
+          pools.attributeObject.unprotect(_removed[_i4]);
         }
 
         // Add the change to the series of patches.
@@ -1274,23 +1312,23 @@ function sync(oldTree, newTree, patches) {
     // Check for modifications.
     var toModify = attributes;
 
-    for (var _i6 = 0; _i6 < toModify.length; _i6++) {
-      var oldAttrValue = oldTree.attributes[_i6] && oldTree.attributes[_i6].value;
-      var newAttrValue = attributes[_i6] && attributes[_i6].value;
+    for (var _i5 = 0; _i5 < toModify.length; _i5++) {
+      var oldAttrValue = oldTree.attributes[_i5] && oldTree.attributes[_i5].value;
+      var newAttrValue = attributes[_i5] && attributes[_i5].value;
 
       // Only push in a change if the attribute or value changes.
       if (oldAttrValue !== newAttrValue) {
         var _change2 = {
           __do__: MODIFY_ATTRIBUTE,
           element: oldTree,
-          name: toModify[_i6].name,
-          value: toModify[_i6].value
+          name: toModify[_i5].name,
+          value: toModify[_i5].value
         };
 
         // Replace the attribute in the virtual node.
-        var _attr = oldTree.attributes[_i6];
-        _attr.name = toModify[_i6].name;
-        _attr.value = toModify[_i6].value;
+        var _attr = oldTree.attributes[_i5];
+        _attr.name = toModify[_i5].name;
+        _attr.value = toModify[_i5].value;
 
         // Add the change to the series of patches.
         patches.push(_change2);
@@ -1559,12 +1597,12 @@ function process(element, patches) {
                 var makeDetached = transition.makePromises('detached', [oldEl]);
 
                 triggerTransition('detached', makeDetached, function () {
-                  // And then empty out the entire contents.
-                  oldEl.innerHTML = '';
-
                   if (oldEl.parentNode) {
                     oldEl.parentNode.removeChild(oldEl);
                   }
+
+                  // And then empty out the entire contents.
+                  oldEl.innerHTML = '';
 
                   (0, _memory.unprotectElement)(patch.old, _make2.default);
                 });
@@ -1593,6 +1631,10 @@ function process(element, patches) {
                     var detachPromises = transition.makePromises('detached', [oldEl]);
                     var replacePromises = transition.makePromises('replaced', [oldEl], newEl);
 
+                    triggerTransition('replaced', replacePromises, function (promises) {
+                      allPromises.push.apply(allPromises, promises);
+                    });
+
                     triggerTransition('detached', detachPromises, function (promises) {
                       allPromises.push.apply(allPromises, promises);
                     });
@@ -1602,15 +1644,14 @@ function process(element, patches) {
                       attached(patch.new);
                     });
 
-                    triggerTransition('replaced', replacePromises, function (promises) {
-                      allPromises.push.apply(allPromises, promises);
-                    });
-
                     // Once all the promises have completed, invoke the action, if no
                     // promises were added, this will be a synchronous operation.
                     if (allPromises.length) {
                       Promise.all(allPromises).then(function replaceElement() {
-                        oldEl.parentNode.replaceChild(newEl, oldEl);
+                        if (oldEl.parentNode) {
+                          oldEl.parentNode.replaceChild(newEl, oldEl);
+                        }
+
                         (0, _memory.unprotectElement)(patch.old, _make2.default);
 
                         (0, _memory.protectElement)(patch.new);
@@ -1931,27 +1972,7 @@ function triggerLifecycleEvent(stateName, args, elements) {
     var isTextNode = element.nodeType === 3;
     var nodeName = element.nodeName.toLowerCase();
     var descriptor = (0, _make2.default)(element);
-
-    // Value of the `is` attribute, if it exists.
-    var isAttr = null;
-
-    // Check for the `is` attribute. It has a known bug where it cannot be
-    // applied dynamically.
-    if (!_custom.components[nodeName] && Array.isArray(descriptor.attributes)) {
-      descriptor.attributes.some(function (attr, idx) {
-        if (attr.name === 'is') {
-          isAttr = attr.value;
-          return true;
-        }
-      });
-    }
-
-    // Hack around the `is` attribute being unable to be set dynamically.
-    if (isAttr && _custom.components[isAttr]) {
-      nodeName = isAttr;
-    }
-
-    var customElement = _custom.components[nodeName] || empty;
+    var customElement = _custom.components[descriptor.is || nodeName] || empty;
     var customElementMethodName = stateName + 'Callback';
 
     // Call the associated CustomElement's lifecycle callback, if it exists.
@@ -2256,6 +2277,8 @@ function makeParser() {
     instance.nodeName = name;
     instance.nodeValue = '';
     instance.nodeType = 1;
+    instance.key = '';
+    instance.is = '';
     instance.childNodes.length = 0;
     instance.attributes.length = 0;
 
@@ -2265,6 +2288,17 @@ function makeParser() {
 
         attr.name = match[1];
         attr.value = match[6] || match[5] || match[4] || match[1];
+
+        // If a key attribute is found attach directly to the instance.
+        if (attr.name === 'key') {
+          instance.key = attr.value;
+        }
+
+        // If the element is extending another, set this lookup immediately
+        // on the virtual node.
+        if (attr.name === 'is') {
+          instance.is = attr.value;
+        }
 
         // Look for empty attributes.
         if (match[6] === '""') {
@@ -2552,6 +2586,9 @@ function initializePools(COUNT) {
       return {
         nodeName: '',
         nodeValue: '',
+        nodeType: 1,
+        key: '',
+        is: '',
         uuid: uuid(),
         childNodes: [],
         attributes: []
