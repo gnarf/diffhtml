@@ -1169,48 +1169,103 @@ function sync(oldTree, newTree, patches) {
     (function () {
       // For now just splice out the end items.
       var diff = oldChildNodesLength - childNodesLength;
-      var shallowClone = [].concat(_toConsumableArray(oldChildNodes));
-      var offset = 0;
-      var toRemove = null;
 
-      // Ensure keys exist for all the old & new elements.
+      // Check if a [key] attr exists for at least one new elements, if you're
+      // working with a long list of childNodes it's to your
+      // performance-advantage to set the key attribute. That will short-circuit
+      // this loop quickly.
       var newHasKeys = childNodes.some(function (childNode) {
-        return !childNode.is;
+        return childNode.key;
       });
 
-      // There needs to be keys to diff, if not, there's no point in checking.
+      // Store elements to remove here.
+      var toRemove = [];
+
+      // If there are no keys set, simply splice off the children.
       if (!newHasKeys) {
         toRemove = oldChildNodes.splice(oldChildNodesLength - diff, diff);
       }
-      // This is an expensive operation so we do the above check to ensure that a
-      // key was specified.
+      // If keys are used, do smart detection.
       else {
-          // If the original childNodes contain a key attribute, use this to
-          // compare over the naive method below.
-          toRemove = shallowClone.reduce(function (toRemove, oldChildNode, index) {
-            var newChildNode = childNodes[index + offset];
-            var oldIndex = oldChildNodes.indexOf(oldChildNode);
+          (function () {
+            var oldKeys = {};
+            var newKeys = {};
 
-            // We've found all the removals.
-            if (toRemove.length === diff) {
-              return toRemove;
-            }
-            // If we're still iterating and ran out of items.
-            else if (!newChildNode) {
-                offset += 1;
-                toRemove.push(oldChildNode);
-                oldChildNodes.splice(oldIndex, 1);
+            // Loop over the old children and caches them and the new nodes into an
+            // object for quick lookup.
+            oldChildNodes.forEach(function (oldChildNode, i) {
+              var childNode = childNodes[i];
+
+              if (oldChildNode.key) {
+                oldKeys[oldChildNode.key] = oldChildNode;
               }
-              // The keys do not match.
-              else if (oldChildNode.key !== newChildNode.key) {
-                  offset += 1;
-                  toRemove.push(oldChildNode);
-                  oldChildNodes.splice(oldIndex, 1);
-                }
 
-            return toRemove;
-          }, []);
+              if (childNode && childNode.key) {
+                newKeys[childNode.key] = childNode;
+              }
+            });
+
+            [].concat(_toConsumableArray(oldChildNodes)).forEach(function (oldChildNode, i) {
+              // Get the true position of this element.
+              var index = oldChildNodes.indexOf(oldChildNode);
+              var childNode = childNodes[i];
+
+              var oldKey = {
+                old: oldKeys[oldChildNode.key],
+                new: newKeys[oldChildNode.key]
+              };
+
+              var newKey = {
+                old: childNode && oldKeys[childNode.key],
+                new: childNode && newKeys[childNode.key]
+              };
+
+              // If there is a new element that matches this position, figure out
+              // if it's a removal or smart replacement.
+              if (childNode) {
+                // Will replace elements inline to maintain potential whitespace.
+                if (newKey.new && !oldKey.new && oldKey.old) {
+                  oldChildNodes.splice(index, 1, newKey.new);
+
+                  patches.push({
+                    __do__: MODIFY_ELEMENT,
+                    old: oldChildNode,
+                    new: childNode
+                  });
+                }
+                // If this element has a key that does not match and the element
+                //else if (newKey.new && oldKey.new && oldChildNode.key !== childNode.key) {
+                //  let oldEl = oldChildNodes.splice(index, 1, newKey.new)[0];
+                //  oldChildNodes.push(oldEl);
+                //}
+              } else if (oldKey.old && oldKey.new) {
+                  pools.elementObject.unprotect(oldChildNode);
+                  oldChildNodes.splice(index, 1);
+                } else {
+                  console.log('key >>', oldChildNode.key);
+                  oldChildNodes.splice(index, 1);
+                  toRemove.push(oldChildNode);
+                }
+              // Exists in the new set, so splice it out, since it has already been
+              // replaced and we don't to accidentally remove it.
+              //else if (oldKey.old && !oldKey.new) {
+              //}
+              //else if (oldKey.new) {
+              //  oldChildNodes.splice(index, 1, oldKey.new);
+              //  toRemove.push(oldChildNode);
+              //}
+              //else {
+              //  oldChildNodes.splice(index, 1);
+              //  toRemove.push(oldChildNode);
+              //}
+            });
+          })();
         }
+
+      console.log('>>>>>>>', oldChildNodes.length, childNodes.length);
+      console.log('Nodes >>', oldChildNodes.map(function (c) {
+        return JSON.parse(JSON.stringify(c));
+      }));
 
       oldChildNodesLength = oldChildNodes.length;
 
@@ -1395,6 +1450,10 @@ var blockTextElements = ['script', 'noscript', 'style', 'pre', 'template'];
  * @param e - Object that contains patches.
  */
 function process(element, patches) {
+  console.log(patches.map(function (patch) {
+    return JSON.parse(JSON.stringify(patch, null, 2));
+  }));
+
   var elementMeta = _tree.TreeCache.get(element);
   var promises = [];
   var triggerTransition = transition.buildTrigger(promises);
@@ -1588,27 +1647,42 @@ function process(element, patches) {
 
             // Remove.
             else if (oldEl && !newEl) {
-                if (!oldEl.parentNode) {
-                  (0, _memory.unprotectElement)(patch.old, _make2.default);
+                (function () {
+                  var removeElement = function removeElement() {
+                    if (oldEl.parentNode) {
+                      oldEl.parentNode.removeChild(oldEl);
+                    }
 
-                  throw new Error('Can\'t remove without parent, is this the ' + 'document root?');
-                }
+                    // And then empty out the entire contents.
+                    oldEl.innerHTML = '';
 
-                var makeDetached = transition.makePromises('detached', [oldEl]);
+                    (0, _memory.unprotectElement)(patch.old, _make2.default);
+                  };
 
-                triggerTransition('detached', makeDetached, function () {
-                  if (oldEl.parentNode) {
-                    oldEl.parentNode.removeChild(oldEl);
+                  if (!oldEl.parentNode) {
+                    (0, _memory.unprotectElement)(patch.old, _make2.default);
+
+                    throw new Error('Can\'t remove without parent, is this the ' + 'document root?');
                   }
 
-                  // And then empty out the entire contents.
-                  oldEl.innerHTML = '';
+                  var makeDetached = transition.makePromises('detached', [oldEl]);
+                  var allPromises = [];
 
-                  (0, _memory.unprotectElement)(patch.old, _make2.default);
-                });
+                  triggerTransition('detached', makeDetached, function (promises) {
+                    allPromises.push.apply(allPromises, promises);
+                  });
+
+                  if (allPromises.length) {
+                    Promise.all(allPromises).then(removeElement, function (ex) {
+                      return console.log(ex);
+                    });
+                  } else {
+                    removeElement();
+                  }
+                })();
               }
 
-              // Replace.
+              // Replace child node.
               else if (oldEl && newEl) {
                   (function () {
                     if (!oldEl.parentNode) {
@@ -1628,6 +1702,9 @@ function process(element, patches) {
                     // Removed state for transitions API.
                     var allPromises = [];
                     var attachPromises = transition.makePromises('attached', [newEl]);
+
+                    console.log('>> Detach >>', oldEl);
+
                     var detachPromises = transition.makePromises('detached', [oldEl]);
                     var replacePromises = transition.makePromises('replaced', [oldEl], newEl);
 
@@ -1636,6 +1713,7 @@ function process(element, patches) {
                     });
 
                     triggerTransition('detached', detachPromises, function (promises) {
+                      console.log('Derp >>', promises.length);
                       allPromises.push.apply(allPromises, promises);
                     });
 
@@ -1643,6 +1721,8 @@ function process(element, patches) {
                       allPromises.push.apply(allPromises, promises);
                       attached(patch.new);
                     });
+
+                    console.log('Total >>', allPromises.length);
 
                     // Once all the promises have completed, invoke the action, if no
                     // promises were added, this will be a synchronous operation.
@@ -1943,14 +2023,9 @@ function buildTrigger(allPromises) {
       // Add these promises into the global cache.
       addPromises(promises);
 
-      if (!promises.length && callback) {
-        callback(promises);
-      } else {
-        Promise.all(promises).then(callback, function handleRejection(ex) {
-          console.log(ex);
-        });
-      }
-    } else if (callback) {
+      // Trigger the callback with promises.
+      callback(promises);
+    } else {
       callback();
     }
   };
@@ -2084,6 +2159,8 @@ function unprotectElement(element, makeNode) {
   elementObject.cache.uuid.delete(element.uuid);
 
   element.attributes.forEach(attributeObject.unprotect, attributeObject);
+  element.key = '';
+  element.is = '';
 
   if (element.childNodes) {
     element.childNodes.forEach(function (node) {

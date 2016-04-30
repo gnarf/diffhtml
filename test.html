@@ -1,0 +1,67 @@
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+
+  <title>Test</title>
+</head>
+<body>
+  <button>Toggle list</button>
+
+  <ul id="test">
+    <li key="1">Test1</li>
+    <li key="2">Test2</li>
+    <li key="3">Test3</li>
+    <li key="4">Test4</li>
+    <li key="5">Test5</li>
+  </ul>
+
+  <script src="dist/diffhtml.js"></script>
+  <script>
+    document.querySelector('button').onclick = toggle(
+      () => {
+        diff.outerHTML(document.getElementById('test'), `<ul id="test">
+          <li key="1">Test1</li>
+          <li key="3">Test3</li>
+          <li key="5">Test5</li>
+        </ul>`);
+      },
+
+      () => {
+        diff.outerHTML(document.getElementById('test'), `<ul id="test">
+          <li key="1">Test1</li>
+          <li key="2">Test2</li>
+          <li key="3">Test3</li>
+          <li key="4">Test4</li>
+          <li key="5">Test5</li>
+        </ul>`);
+      }
+    );
+
+    diff.addTransitionState('detached', el => {
+      console.log(el.getAttribute('key')); 
+
+      el.style.backgroundColor = 'red';
+
+      return new Promise(resolve => {
+        setTimeout(resolve, 10000);
+      });
+    });
+
+    function toggle(fn1, fn2) {
+      var toggle = false;
+
+      return (ev) => {
+        toggle = !toggle;
+
+        if (toggle) {
+          fn1();
+        }
+        else {
+          fn2();
+        }
+      }
+    }
+  </script>
+</body>
+</html>

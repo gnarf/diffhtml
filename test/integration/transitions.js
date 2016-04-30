@@ -233,7 +233,7 @@ describe('Integration: Transitions', function() {
       assert.equal(result.parentNode, null);
     });
 
-    it('will provide the correct element to detached when using key', function() {
+    it.only('will provide the correct element to detached when using key', function() {
       var result = null;
 
       diff.addTransitionState('detached', el => { result = el; });
@@ -254,6 +254,36 @@ describe('Integration: Transitions', function() {
       assert.equal(result.id, '2');
       assert.equal(result, p);
       assert.equal(result.parentNode, null);
+    });
+
+    it('will provide the correct elements to detached when using key and removing multiple', function() {
+      var actual = [];
+
+      diff.addTransitionState('detached', el => actual.push(el));
+
+      diff.innerHTML(this.fixture, `<div>
+        <p id="1" key="1"></p>
+        <p id="2" key="2"></p>
+        <p id="3" key="3"></p>
+        <p id="4" key="4"></p>
+        <p id="5" key="5"></p>
+        <p id="6" key="6"></p>
+      </div>`);
+
+      var expected = [
+        this.fixture.querySelector('[id="1"]'),
+        this.fixture.querySelector('[id="3"]'),
+        this.fixture.querySelector('[id="5"]'),
+      ];
+
+      diff.innerHTML(this.fixture, `<div>
+        <p id="2" key="2"></p>
+        <p id="4" key="4"></p>
+        <p id="6" key="6"></p>
+      </div>`);
+
+      assert.equal(actual.length, expected.length);
+      assert.deepEqual(actual, expected);
     });
 
     it('will provide the correct arguments to replaced', function() {
