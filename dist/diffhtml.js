@@ -88,9 +88,9 @@ function make(descriptor) {
 
         // If not a dynamic type, set as an attribute, since it's a valid
         // attribute value.
-        if (!isObject && !isFunction) {
+        if (attr.name && !isObject && !isFunction) {
           element.setAttribute(attr.name, attr.value);
-        } else if (typeof attr.value !== 'string') {
+        } else if (attr.name && typeof attr.value !== 'string') {
           // Necessary to track the attribute/prop existence.
           element.setAttribute(attr.name, '');
 
@@ -202,7 +202,6 @@ exports.html = html;
 
 var _parser = _dereq_('./util/parser');
 
-// Make a parser.
 var isPropEx = /(=|'|")/;
 
 /**
@@ -267,7 +266,7 @@ function html(strings) {
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.html = exports.DOMException = exports.TransitionStateError = undefined;
+exports.createAttribute = exports.createElement = exports.html = exports.DOMException = exports.TransitionStateError = undefined;
 
 var _errors = _dereq_('./errors');
 
@@ -290,6 +289,21 @@ Object.defineProperty(exports, 'html', {
   enumerable: true,
   get: function get() {
     return _html.html;
+  }
+});
+
+var _transform = _dereq_('./util/transform');
+
+Object.defineProperty(exports, 'createElement', {
+  enumerable: true,
+  get: function get() {
+    return _transform.createElement;
+  }
+});
+Object.defineProperty(exports, 'createAttribute', {
+  enumerable: true,
+  get: function get() {
+    return _transform.createAttribute;
   }
 });
 exports.outerHTML = outerHTML;
@@ -527,7 +541,7 @@ function enableProllyfill() {
   });
 }
 
-},{"./errors":3,"./html":4,"./node/make":6,"./node/patch":7,"./node/release":8,"./node/tree":10,"./transitions":13}],6:[function(_dereq_,module,exports){
+},{"./errors":3,"./html":4,"./node/make":6,"./node/patch":7,"./node/release":8,"./node/tree":10,"./transitions":13,"./util/transform":19}],6:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -656,6 +670,8 @@ var _tree = _dereq_('./tree');
 
 var _pools = _dereq_('../util/pools');
 
+var _transform = _dereq_('../util/transform');
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 /**
@@ -732,7 +748,7 @@ function patchNode(element, newHTML, options) {
 
   if (typeof newHTML === 'string') {
     var childNodes = (0, _parser.parse)(newHTML).childNodes;
-    newTree = options.inner ? childNodes : childNodes[0];
+    newTree = isInner ? childNodes : childNodes[0];
   } else if (newHTML.ownerDocument) {
     newTree = (0, _make2.default)(newHTML);
   } else {
@@ -750,6 +766,12 @@ function patchNode(element, newHTML, options) {
       nodeValue: elementMeta.oldTree.nodeValue
     };
   }
+
+  if (newTree && newTree.childNodes) {
+    newTree.childNodes = (0, _transform.normalizeChildNodes)(newTree.childNodes);
+  }
+
+  //console.log(JSON.parse(JSON.stringify(newTree)));
 
   // Synchronize the tree.
   var patches = (0, _sync2.default)(elementMeta.oldTree, newTree);
@@ -769,7 +791,7 @@ function patchNode(element, newHTML, options) {
   }
 }
 
-},{"../patches/process":11,"../util/memory":15,"../util/parser":16,"../util/pools":17,"../util/render":18,"./make":6,"./sync":9,"./tree":10}],8:[function(_dereq_,module,exports){
+},{"../patches/process":11,"../util/memory":15,"../util/parser":16,"../util/pools":17,"../util/render":18,"../util/transform":19,"./make":6,"./sync":9,"./tree":10}],8:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -901,10 +923,14 @@ function sync(oldTree, newTree, patches) {
       });
 
       return patches;
+    } else if (oldTree.uuid === newTree.uuid) {
+      skipAttributeCompare = true;
     }
 
+  var areTextNodes = oldIsTextNode && newIsTextNode;
+
   // If the top level nodeValue has changed we should reflect it.
-  if (oldIsTextNode && newIsTextNode && oldNodeValue !== nodeValue) {
+  if (areTextNodes && oldNodeValue !== nodeValue) {
     patches.push({
       __do__: CHANGE_TEXT,
       element: oldTree,
@@ -914,6 +940,23 @@ function sync(oldTree, newTree, patches) {
     oldTree.nodeValue = newTree.nodeValue;
 
     return patches;
+  }
+
+  // Ensure keys exist for all the old & new elements.
+  var noOldKeys = !oldChildNodes.some(function (oldChildNode) {
+    return oldChildNode.key;
+  });
+  var newKeys = null;
+  var oldKeys = null;
+
+  if (!noOldKeys) {
+    newKeys = new Set(childNodes.map(function (childNode) {
+      return String(childNode.key);
+    }).filter(Boolean));
+
+    oldKeys = new Set(oldChildNodes.map(function (childNode) {
+      return String(childNode.key);
+    }).filter(Boolean));
   }
 
   // Most common additive elements.
@@ -940,11 +983,6 @@ function sync(oldTree, newTree, patches) {
     });
   }
 
-  // Ensure keys exist for all the old & new elements.
-  var noOldKeys = !oldChildNodes.some(function (oldChildNode) {
-    return oldChildNode.key;
-  });
-
   // Remove these elements.
   if (oldChildNodesLength > childNodesLength) {
     (function () {
@@ -961,14 +999,6 @@ function sync(oldTree, newTree, patches) {
       // key was specified.
       else {
           (function () {
-            var newKeys = new Set(childNodes.map(function (childNode) {
-              return String(childNode.key);
-            }).filter(Boolean));
-
-            var oldKeys = new Set(oldChildNodes.map(function (childNode) {
-              return String(childNode.key);
-            }).filter(Boolean));
-
             var keysToRemove = {};
             var truthy = 1;
 
@@ -1055,7 +1085,7 @@ function sync(oldTree, newTree, patches) {
   // Synchronize attributes
   var attributes = newTree.attributes;
 
-  if (attributes && !skipAttributeCompare) {
+  if (!skipAttributeCompare && attributes) {
     var oldLength = oldTree.attributes.length;
     var newLength = attributes.length;
 
@@ -1113,7 +1143,9 @@ function sync(oldTree, newTree, patches) {
     var toModify = attributes;
 
     for (var _i5 = 0; _i5 < toModify.length; _i5++) {
+      var oldAttrName = oldTree.attributes[_i5] && oldTree.attributes[_i5].name;
       var oldAttrValue = oldTree.attributes[_i5] && oldTree.attributes[_i5].value;
+      var newAttrName = attributes[_i5] && attributes[_i5].name;
       var newAttrValue = attributes[_i5] && attributes[_i5].value;
 
       // Only push in a change if the attribute or value changes.
@@ -1121,14 +1153,26 @@ function sync(oldTree, newTree, patches) {
         var _change2 = {
           __do__: MODIFY_ATTRIBUTE,
           element: oldTree,
-          name: toModify[_i5].name,
+          name: oldTree.attributes[_i5].name,
           value: toModify[_i5].value
         };
 
         // Replace the attribute in the virtual node.
         var _attr = oldTree.attributes[_i5];
-        _attr.name = toModify[_i5].name;
-        _attr.value = toModify[_i5].value;
+
+        // If the attribute names change, this is a removal.
+        if (oldAttrName === newAttrName) {
+          _attr.value = toModify[_i5].value;
+        } else {
+          _change2.name = newAttrName ? newAttrName : oldAttrName;
+          _change2.value = toModify[_i5].value ? toModify[_i5].value : undefined;
+          _attr.name = newAttrName;
+          _attr.value = _change2.value;
+
+          if (!newAttrName && !newAttrName) {
+            _pools.pools.attributeObject.unprotect(toModify[_i5]);
+          }
+        }
 
         // Add the change to the series of patches.
         patches.push(_change2);
@@ -1201,6 +1245,7 @@ var slice = Array.prototype.slice;
  * @param patches - Array that contains patch objects.
  */
 function process(element, patches) {
+  //console.log([...patches]);
   var elementMeta = _tree.TreeCache.get(element);
   var promises = [];
   var triggerTransition = transition.buildTrigger(promises);
@@ -1489,7 +1534,9 @@ function process(element, patches) {
                     // If not a dynamic type, set as an attribute, since it's a valid
                     // attribute value.
                     if (!isObject && !isFunction) {
-                      el.setAttribute(patch.name, patch.value);
+                      if (patch.name) {
+                        el.setAttribute(patch.name, patch.value);
+                      }
                     } else if (typeof patch.value !== 'string') {
                       // Necessary to track the attribute/prop existence.
                       el.setAttribute(patch.name, '');
@@ -1498,7 +1545,6 @@ function process(element, patches) {
                       el[patch.name] = patch.value;
                     }
 
-                    // Support live updating of the value attribute.
                     // Support live updating of the value attribute.
                     if (patch.name === 'value' || patch.name === 'checked') {
                       el[patch.name] = patch.value;
@@ -1853,14 +1899,18 @@ function cleanMemory(makeNode) {
 
   // Empty all element allocations.
   elementObject.cache.allocated.forEach(function (v) {
-    elementObject.cache.free.push(v);
+    if (elementObject.cache.free.length < _pools.count) {
+      elementObject.cache.free.push(v);
+    }
   });
 
   elementObject.cache.allocated.clear();
 
   // Empty all attribute allocations.
   attributeObject.cache.allocated.forEach(function (v) {
-    attributeObject.cache.free.push(v);
+    if (attributeObject.cache.free.length < _pools.count) {
+      attributeObject.cache.free.push(v);
+    }
   });
 
   attributeObject.cache.allocated.clear();
@@ -1883,7 +1933,7 @@ var kMarkupPattern = /<!--[^]*?(?=-->)-->|<(\/?)([a-z\-][a-z0-9\-]*)\s*([^>]*?)(
 
 var kAttributePattern = /\b(id|class)\s*(=\s*("([^"]+)"|'([^']+)'|(\S+)))?/ig;
 
-var reAttrPattern = /\b([a-z][a-z0-9\-]*)\s*(=\s*("([^"]+)"|'([^']+)'|(\S+)))?/ig;
+var reAttrPattern = /\b([_a-z][_a-z0-9\-]*)\s*(=\s*("([^"]+)"|'([^']+)'|(\S+)))?/ig;
 
 var kSelfClosingElements = {
   meta: true,
@@ -2142,6 +2192,14 @@ function parse(data, supplemental) {
     }
   }
 
+  // Find any last remaining text after the parsing completes over tags.
+  var remainingText = data.slice(lastTextPos).trim();
+
+  // If the text exists and isn't just whitespace, push into a new TextNode.
+  if (remainingText) {
+    currentParent.childNodes.push(TextNode(remainingText));
+  }
+
   // This is an entire document, so only allow the HTML children to be
   // body or head.
   if (root.childNodes.length && root.childNodes[0].nodeName === 'html') {
@@ -2317,7 +2375,7 @@ function initializePools(COUNT) {
 // Create ${COUNT} items of each type.
 initializePools(count);
 
-},{"./uuid":19}],18:[function(_dereq_,module,exports){
+},{"./uuid":20}],18:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -2394,6 +2452,127 @@ function completeRender(element, elementMeta) {
 }
 
 },{"../node/make":6,"../node/patch":7,"../node/tree":10,"../util/memory":15,"../util/pools":17}],19:[function(_dereq_,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+
+var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol ? "symbol" : typeof obj; };
+
+exports.normalizeChildNodes = normalizeChildNodes;
+exports.createElement = createElement;
+exports.createAttribute = createAttribute;
+
+var _pools = _dereq_('./pools');
+
+var _parser = _dereq_('./parser');
+
+/**
+ * Normalizes input childNodes that may or may not be well-formed VTree
+ * objects.
+ *
+ * @param childNodes
+ * @return {Array} new child nodes
+ */
+function normalizeChildNodes(childNodes) {
+  var newChildNodes = [];
+
+  [].concat(childNodes).forEach(function (childNode) {
+    // Handle string values.
+    if ((typeof childNode === 'undefined' ? 'undefined' : _typeof(childNode)) !== 'object') {
+      var nodes = (0, _parser.parse)(String(childNode)).childNodes;
+      var filtered = nodes.length === 1 ? nodes[0] : nodes;
+      var isArray = Array.isArray(filtered);
+      var truthy = filtered && !(isArray && filtered.length === 0);
+
+      if (truthy) {
+        [].concat(filtered).forEach(function (childNode) {
+          newChildNodes.push(childNode);
+        });
+      }
+    }
+    // Handle array values.
+    else if (Array.isArray(childNode)) {
+        childNode.forEach(function (childNode) {
+          newChildNodes.push(childNode);
+          if (childNode.nodeType !== 1) {
+            return;
+          }
+          childNode.childNodes = normalizeChildNodes(childNode.childNodes);
+        });
+      }
+      // Handle the rest.
+      else if (childNode.nodeType === 1) {
+          childNode.childNodes = normalizeChildNodes(childNode.childNodes);
+          newChildNodes.push(childNode);
+        } else {
+          newChildNodes.push(childNode);
+        }
+  });
+
+  //FIXME
+  //newChildNodes.forEach(childNode => {
+  //  // Ensure attributes are nomralized as well.
+  //  childNode.attributes = childNode.attributes.filter(attr => attr.name);
+  //});
+
+  return newChildNodes;
+}
+
+/**
+ * Creates a virtual element used in or as a virtual tree.
+ *
+ * @param nodeName
+ * @param attributes
+ * @param childNodes
+ * @return {Object} element
+ */
+function createElement(nodeName, attributes, childNodes) {
+  var entry = _pools.pools.elementObject.get();
+  var isTextNode = nodeName === 'text' || nodeName === '#text';
+
+  entry.key = '';
+  entry.nodeName = nodeName;
+  entry.nodeType = isTextNode ? 3 : 1;
+
+  if (!isTextNode) {
+    entry.nodeValue = '';
+    entry.attributes = attributes || [];
+    entry.childNodes = childNodes;
+
+    entry.attributes.some(function (attr) {
+      if (attr.name === 'key') {
+        entry.key = attr.value;
+        return true;
+      }
+    });
+  } else {
+    entry.nodeValue = Array.isArray(childNodes) ? childNodes.join('') : childNodes;
+    entry.attributes.length = 0;
+    entry.childNodes.length = 0;
+  }
+
+  return entry;
+}
+
+/**
+ * Creates a virtual attribute used in a virtual element.
+ *
+ * @param name
+ * @param value
+ * @return {Object} attribute
+ */
+function createAttribute(name, value) {
+  var entry = _pools.pools.attributeObject.get();
+
+  entry.name = name;
+  entry.value = value;
+
+  return entry;
+}
+
+},{"./parser":16,"./pools":17}],20:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {

@@ -67,4 +67,20 @@ describe('Unit: Parser', function() {
     assert.equal(node.attributes[0].name, 'data-text');
     assert.equal(node.attributes[0].value,  '\"<li');
   });
+
+  it('can parse text siblings next to elements', function() {
+    var nodes = parser.parse(`<div></div> Hello world`).childNodes;
+
+    assert.equal(nodes[0].nodeName, 'div');
+    assert.equal(nodes[1].nodeName, '#text');
+    assert.equal(nodes[1].nodeValue, 'Hello world');
+  });
+
+  it('can parse out full token attributes', function() {
+    var token = '__DIFFHTML_BABEL__';
+    var nodes = parser.parse(`<input ${token}>`).childNodes;
+
+    assert.equal(nodes[0].nodeName, 'input');
+    assert.deepEqual(nodes[0].attributes, [{ name: token, value: token }]);
+  });
 });
