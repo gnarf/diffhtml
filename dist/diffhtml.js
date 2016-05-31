@@ -670,8 +670,6 @@ var _tree = _dereq_('./tree');
 
 var _pools = _dereq_('../util/pools');
 
-var _transform = _dereq_('../util/transform');
-
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 /**
@@ -761,21 +759,20 @@ function patchNode(element, newHTML, options) {
     newTree = {
       childNodes: _childNodes,
       attributes: elementMeta.oldTree.attributes,
-      uuid: elementMeta.oldTree.uuid,
       nodeName: elementMeta.oldTree.nodeName,
       nodeValue: elementMeta.oldTree.nodeValue
     };
   }
 
-  if (newTree && newTree.childNodes) {
-    newTree.childNodes = (0, _transform.normalizeChildNodes)(newTree.childNodes);
-  }
-
-  //console.log(JSON.parse(JSON.stringify(newTree)));
-
   // Synchronize the tree.
   var patches = (0, _sync2.default)(elementMeta.oldTree, newTree);
   var invokeRender = (0, _render.completeRender)(element, elementMeta);
+
+  if (Array.isArray(newTree)) {
+    newTree.forEach(_memory.unprotectElement);
+  } else if (newTree) {
+    newTree.childNodes.forEach(_memory.unprotectElement);
+  }
 
   // Process the data immediately and wait until all transition callbacks
   // have completed.
@@ -791,7 +788,7 @@ function patchNode(element, newHTML, options) {
   }
 }
 
-},{"../patches/process":11,"../util/memory":15,"../util/parser":16,"../util/pools":17,"../util/render":18,"../util/transform":19,"./make":6,"./sync":9,"./tree":10}],8:[function(_dereq_,module,exports){
+},{"../patches/process":11,"../util/memory":15,"../util/parser":16,"../util/pools":17,"../util/render":18,"./make":6,"./sync":9,"./tree":10}],8:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -877,6 +874,29 @@ function sync(oldTree, newTree, patches) {
     throw new Error('Missing existing tree to sync');
   }
 
+  // Flatten out childNodes that are arrays.
+  if (newTree && newTree.childNodes) {
+    var hasArray = newTree.childNodes.some(function (node) {
+      return Array.isArray(node);
+    });
+
+    if (hasArray) {
+      (function () {
+        var newChildNodes = [];
+
+        newTree.childNodes.forEach(function (childNode) {
+          if (Array.isArray(childNode)) {
+            newChildNodes.push.apply(newChildNodes, childNode);
+          } else {
+            newChildNodes.push(childNode);
+          }
+        });
+
+        newTree.childNodes = newChildNodes;
+      })();
+    }
+  }
+
   var oldNodeValue = oldTree.nodeValue;
   var oldChildNodes = oldTree.childNodes;
   var oldChildNodesLength = oldChildNodes ? oldChildNodes.length : 0;
@@ -923,9 +943,12 @@ function sync(oldTree, newTree, patches) {
       });
 
       return patches;
-    } else if (oldTree.uuid === newTree.uuid) {
-      skipAttributeCompare = true;
     }
+    // These elements never changed.
+    else if (oldTree.uuid === newTree.uuid) {
+        skipAttributeCompare = true;
+        //return patches;
+      }
 
   var areTextNodes = oldIsTextNode && newIsTextNode;
 
@@ -1245,7 +1268,7 @@ var slice = Array.prototype.slice;
  * @param patches - Array that contains patch objects.
  */
 function process(element, patches) {
-  //console.log([...patches]);
+  //console.log(JSON.parse(JSON.stringify(patches)));
   var elementMeta = _tree.TreeCache.get(element);
   var promises = [];
   var triggerTransition = transition.buildTrigger(promises);
@@ -1845,13 +1868,21 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
  * @return element
  */
 function protectElement(element) {
+  if (Array.isArray(element)) {
+    return element.forEach(function (childNode) {
+      return protectElement(childNode);
+    });
+  }
+
   var elementObject = _pools.pools.elementObject;
   var attributeObject = _pools.pools.attributeObject;
 
   elementObject.protect(element);
 
   element.attributes.forEach(attributeObject.protect, attributeObject);
-  element.childNodes.forEach(protectElement);
+  element.childNodes.forEach(function (childNode) {
+    return protectElement(childNode);
+  });
 
   return element;
 }
@@ -1863,6 +1894,12 @@ function protectElement(element) {
  * @return
  */
 function unprotectElement(element, makeNode) {
+  if (Array.isArray(element)) {
+    return element.forEach(function (childNode) {
+      return unprotectElement(childNode, makeNode);
+    });
+  }
+
   var elementObject = _pools.pools.elementObject;
   var attributeObject = _pools.pools.attributeObject;
 
@@ -2460,7 +2497,6 @@ Object.defineProperty(exports, "__esModule", {
 
 var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol ? "symbol" : typeof obj; };
 
-exports.normalizeChildNodes = normalizeChildNodes;
 exports.createElement = createElement;
 exports.createAttribute = createAttribute;
 
@@ -2468,57 +2504,7 @@ var _pools = _dereq_('./pools');
 
 var _parser = _dereq_('./parser');
 
-/**
- * Normalizes input childNodes that may or may not be well-formed VTree
- * objects.
- *
- * @param childNodes
- * @return {Array} new child nodes
- */
-function normalizeChildNodes(childNodes) {
-  var newChildNodes = [];
-
-  [].concat(childNodes).forEach(function (childNode) {
-    // Handle string values.
-    if ((typeof childNode === 'undefined' ? 'undefined' : _typeof(childNode)) !== 'object') {
-      var nodes = (0, _parser.parse)(String(childNode)).childNodes;
-      var filtered = nodes.length === 1 ? nodes[0] : nodes;
-      var isArray = Array.isArray(filtered);
-      var truthy = filtered && !(isArray && filtered.length === 0);
-
-      if (truthy) {
-        [].concat(filtered).forEach(function (childNode) {
-          newChildNodes.push(childNode);
-        });
-      }
-    }
-    // Handle array values.
-    else if (Array.isArray(childNode)) {
-        childNode.forEach(function (childNode) {
-          newChildNodes.push(childNode);
-          if (childNode.nodeType !== 1) {
-            return;
-          }
-          childNode.childNodes = normalizeChildNodes(childNode.childNodes);
-        });
-      }
-      // Handle the rest.
-      else if (childNode.nodeType === 1) {
-          childNode.childNodes = normalizeChildNodes(childNode.childNodes);
-          newChildNodes.push(childNode);
-        } else {
-          newChildNodes.push(childNode);
-        }
-  });
-
-  //FIXME
-  //newChildNodes.forEach(childNode => {
-  //  // Ensure attributes are nomralized as well.
-  //  childNode.attributes = childNode.attributes.filter(attr => attr.name);
-  //});
-
-  return newChildNodes;
-}
+var _memory = _dereq_('./memory');
 
 /**
  * Creates a virtual element used in or as a virtual tree.
@@ -2529,14 +2515,24 @@ function normalizeChildNodes(childNodes) {
  * @return {Object} element
  */
 function createElement(nodeName, attributes, childNodes) {
+  if (nodeName === '_') {
+    if ((typeof attributes === 'undefined' ? 'undefined' : _typeof(attributes)) === 'object' || typeof attributes === 'function') {
+      return attributes;
+    }
+
+    var _entry = createElement('#text', null, attributes);
+    _pools.pools.elementObject.protect(_entry);
+    return _entry;
+  }
+
   var entry = _pools.pools.elementObject.get();
   var isTextNode = nodeName === 'text' || nodeName === '#text';
 
   entry.key = '';
   entry.nodeName = nodeName;
-  entry.nodeType = isTextNode ? 3 : 1;
 
   if (!isTextNode) {
+    entry.nodeType = 1;
     entry.nodeValue = '';
     entry.attributes = attributes || [];
     entry.childNodes = childNodes;
@@ -2548,10 +2544,14 @@ function createElement(nodeName, attributes, childNodes) {
       }
     });
   } else {
-    entry.nodeValue = Array.isArray(childNodes) ? childNodes.join('') : childNodes;
+    var value = Array.isArray(childNodes) ? childNodes.join('') : childNodes;
+    entry.nodeType = 3;
+    entry.nodeValue = value;
     entry.attributes.length = 0;
     entry.childNodes.length = 0;
   }
+
+  _pools.pools.elementObject.protect(entry);
 
   return entry;
 }
@@ -2569,10 +2569,12 @@ function createAttribute(name, value) {
   entry.name = name;
   entry.value = value;
 
+  _pools.pools.attributeObject.protect(entry);
+
   return entry;
 }
 
-},{"./parser":16,"./pools":17}],20:[function(_dereq_,module,exports){
+},{"./memory":15,"./parser":16,"./pools":17}],20:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
