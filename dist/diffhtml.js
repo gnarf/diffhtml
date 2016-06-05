@@ -1805,7 +1805,7 @@ var element = document.createElement('div');
  */
 function decodeEntities(string) {
   // If there are no HTML entities, we can safely pass the string through.
-  if (string.indexOf('&') === -1) {
+  if (!string || !string.indexOf || string.indexOf('&') === -1) {
     return string;
   }
 
@@ -1863,10 +1863,10 @@ function protectElement(element) {
  * @param element
  * @return
  */
-function unprotectElement(element, makeNode) {
+function unprotectElement(element) {
   if (Array.isArray(element)) {
     return element.forEach(function (childNode) {
-      return unprotectElement(childNode, makeNode);
+      return unprotectElement(childNode, _make2.default);
     });
   }
 
@@ -1877,12 +1877,10 @@ function unprotectElement(element, makeNode) {
 
   element.attributes.forEach(attributeObject.unprotect, attributeObject);
   element.childNodes.forEach(function (node) {
-    return unprotectElement(node, makeNode);
+    return unprotectElement(node, _make2.default);
   });
 
-  if (makeNode && makeNode.nodes) {
-    makeNode.nodes.delete(element);
-  }
+  _make2.default.nodes.delete(element);
 
   return element;
 }
@@ -1890,34 +1888,34 @@ function unprotectElement(element, makeNode) {
 /**
  * Recycles all unprotected allocations.
  */
-function cleanMemory(makeNode) {
-  var elementObject = _pools.pools.elementObject;
-  var attributeObject = _pools.pools.attributeObject;
+function cleanMemory() {
+  var elementCache = _pools.pools.elementObject.cache;
+  var attributeCache = _pools.pools.attributeObject.cache;
 
   // Empty all element allocations.
-  elementObject.cache.allocated.forEach(function (v) {
-    if (elementObject.cache.free.length < _pools.count) {
-      elementObject.cache.free.push(v);
+  elementCache.allocated.forEach(function (v) {
+    if (elementCache.free.length < _pools.count) {
+      elementCache.free.push(v);
     }
   });
 
-  elementObject.cache.allocated.clear();
+  elementCache.allocated.clear();
 
   // Clean out unused elements.
-  makeNode.nodes.forEach(function (v, k) {
-    if (!elementObject.cache.protected.has(k)) {
-      makeNode.nodes.delete(k);
+  _make2.default.nodes.forEach(function (v, k) {
+    if (!elementCache.protected.has(k) && !elementCache.allocated.has(k)) {
+      _make2.default.nodes.delete(k);
     }
   });
 
   // Empty all attribute allocations.
-  attributeObject.cache.allocated.forEach(function (v) {
-    if (attributeObject.cache.free.length < _pools.count) {
-      attributeObject.cache.free.push(v);
+  attributeCache.allocated.forEach(function (v) {
+    if (attributeCache.free.length < _pools.count) {
+      attributeCache.free.push(v);
     }
   });
 
-  attributeObject.cache.allocated.clear();
+  attributeCache.allocated.clear();
 }
 
 },{"../node/make":5,"../util/pools":16}],15:[function(_dereq_,module,exports){
