@@ -4,37 +4,6 @@
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.default = get;
-
-var _make = _dereq_('../node/make');
-
-var _make2 = _interopRequireDefault(_make);
-
-var _make3 = _dereq_('../element/make');
-
-var _make4 = _interopRequireDefault(_make3);
-
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
-/**
- * Takes in an element descriptor and resolve it to a uuid and DOM Node.
- *
- * @param descriptor - Element descriptor
- * @return {Object} containing the uuid and DOM node
- */
-function get(descriptor) {
-  var uuid = descriptor.uuid;
-  var element = (0, _make4.default)(descriptor);
-
-  return { uuid: uuid, element: element };
-}
-
-},{"../element/make":2,"../node/make":6}],2:[function(_dereq_,module,exports){
-'use strict';
-
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
 
 var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol ? "symbol" : typeof obj; };
 
@@ -64,8 +33,8 @@ function make(descriptor) {
   var isSvg = false;
 
   // If the element descriptor was already created, reuse the existing element.
-  if (_make2.default.nodes[descriptor.uuid]) {
-    return _make2.default.nodes[descriptor.uuid];
+  if (_make2.default.nodes.has(descriptor)) {
+    return _make2.default.nodes.get(descriptor);
   }
 
   if (descriptor.nodeName === '#text') {
@@ -123,13 +92,13 @@ function make(descriptor) {
     }
   }
 
-  // Add to the nodes cache using the designated uuid as the lookup key.
-  _make2.default.nodes[descriptor.uuid] = element;
+  // Add to the nodes cache.
+  _make2.default.nodes.set(descriptor, element);
 
   return element;
 }
 
-},{"../node/make":6,"../svg":12}],3:[function(_dereq_,module,exports){
+},{"../node/make":5,"../svg":11}],2:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -189,7 +158,7 @@ var DOMException = exports.DOMException = function (_Error2) {
   return DOMException;
 }(Error);
 
-},{}],4:[function(_dereq_,module,exports){
+},{}],3:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -260,7 +229,7 @@ function html(strings) {
   return childNodes.length > 1 ? childNodes : childNodes[0];
 }
 
-},{"./util/parser":16}],5:[function(_dereq_,module,exports){
+},{"./util/parser":15}],4:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -541,7 +510,7 @@ function enableProllyfill() {
   });
 }
 
-},{"./errors":3,"./html":4,"./node/make":6,"./node/patch":7,"./node/release":8,"./node/tree":10,"./transitions":13,"./util/transform":19}],6:[function(_dereq_,module,exports){
+},{"./errors":2,"./html":3,"./node/make":5,"./node/patch":6,"./node/release":7,"./node/tree":9,"./transitions":12,"./util/transform":18}],5:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -554,7 +523,7 @@ var _pools = _dereq_('../util/pools');
 var empty = {};
 
 // Cache created nodes inside this object.
-make.nodes = {};
+make.nodes = new Map();
 
 /**
  * Converts a live node into a virtual node.
@@ -574,8 +543,8 @@ function make(node) {
   // diff and patch.
   var entry = _pools.pools.elementObject.get();
 
-  // Associate this newly allocated uuid with this Node.
-  make.nodes[entry.uuid] = node;
+  // Associate this newly allocated descriptor with this Node.
+  make.nodes.set(entry, node);
 
   // Set a lowercased (normalized) version of the element's nodeName.
   entry.nodeName = node.nodeName.toLowerCase();
@@ -640,7 +609,7 @@ function make(node) {
   return entry;
 }
 
-},{"../util/pools":17}],7:[function(_dereq_,module,exports){
+},{"../util/pools":16}],6:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -788,7 +757,7 @@ function patchNode(element, newHTML, options) {
   }
 }
 
-},{"../patches/process":11,"../util/memory":15,"../util/parser":16,"../util/pools":17,"../util/render":18,"./make":6,"./sync":9,"./tree":10}],8:[function(_dereq_,module,exports){
+},{"../patches/process":10,"../util/memory":14,"../util/parser":15,"../util/pools":16,"../util/render":17,"./make":5,"./sync":8,"./tree":9}],7:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -832,7 +801,7 @@ function releaseNode(element) {
   (0, _memory.cleanMemory)(_make2.default);
 }
 
-},{"../util/memory":15,"../util/pools":17,"./make":6,"./tree":10}],9:[function(_dereq_,module,exports){
+},{"../util/memory":14,"../util/pools":16,"./make":5,"./tree":9}],8:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -900,7 +869,6 @@ function sync(oldTree, newTree, patches) {
   var oldNodeValue = oldTree.nodeValue;
   var oldChildNodes = oldTree.childNodes;
   var oldChildNodesLength = oldChildNodes ? oldChildNodes.length : 0;
-  var oldElement = oldTree.uuid;
   var oldNodeName = oldTree.nodeName;
   var oldIsTextNode = oldNodeName === '#text';
 
@@ -919,7 +887,6 @@ function sync(oldTree, newTree, patches) {
   var nodeValue = newTree.nodeValue;
   var childNodes = newTree.childNodes;
   var childNodesLength = childNodes ? childNodes.length : 0;
-  var newElement = newTree.uuid;
   var nodeName = newTree.nodeName;
   var newIsTextNode = nodeName === '#text';
   var oldIsFragment = oldTree.nodeName === '#document-fragment';
@@ -944,10 +911,9 @@ function sync(oldTree, newTree, patches) {
 
       return patches;
     }
-    // These elements never changed.
-    else if (oldTree.uuid === newTree.uuid) {
-        skipAttributeCompare = true;
-        //return patches;
+    // This element never changes.
+    else if (oldTree.isStatic) {
+        return patches;
       }
 
   var areTextNodes = oldIsTextNode && newIsTextNode;
@@ -1206,7 +1172,7 @@ function sync(oldTree, newTree, patches) {
   return patches;
 }
 
-},{"../util/pools":17}],10:[function(_dereq_,module,exports){
+},{"../util/pools":16}],9:[function(_dereq_,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -1215,7 +1181,7 @@ Object.defineProperty(exports, "__esModule", {
 // Cache prebuilt trees and lookup by element.
 var TreeCache = exports.TreeCache = new Map();
 
-},{}],11:[function(_dereq_,module,exports){
+},{}],10:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -1232,13 +1198,13 @@ var transition = _interopRequireWildcard(_transitions);
 
 var _pools = _dereq_('../util/pools');
 
-var _get = _dereq_('../element/get');
-
-var _get2 = _interopRequireDefault(_get);
-
-var _make = _dereq_('../node/make');
+var _make = _dereq_('../element/make');
 
 var _make2 = _interopRequireDefault(_make);
+
+var _make3 = _dereq_('../node/make');
+
+var _make4 = _interopRequireDefault(_make3);
 
 var _sync = _dereq_('../node/sync');
 
@@ -1277,7 +1243,7 @@ function process(element, patches) {
   var attached = function attached(descriptor, fragment, parentNode) {
     (0, _memory.protectElement)(descriptor);
 
-    var el = (0, _get2.default)(descriptor).element;
+    var el = (0, _make2.default)(descriptor);
 
     // If the element added was a DOM text node or SVG text element, trigger
     // the textChanged transition.
@@ -1324,9 +1290,9 @@ function process(element, patches) {
 
   var _loop = function _loop(i) {
     var patch = patches[i];
-    var el = patch.element ? (0, _get2.default)(patch.element).element : null;
-    var oldEl = patch.old ? (0, _get2.default)(patch.old).element : null;
-    var newEl = patch.new ? (0, _get2.default)(patch.new).element : null;
+    var el = patch.element ? (0, _make2.default)(patch.element) : null;
+    var oldEl = patch.old ? (0, _make2.default)(patch.old) : null;
+    var newEl = patch.new ? (0, _make2.default)(patch.new) : null;
 
     // Empty the Node's contents. This is an optimization, since `innerHTML`
     // will be faster than iterating over every element and manually removing.
@@ -1336,7 +1302,7 @@ function process(element, patches) {
 
       triggerTransition('detached', detachPromises, function (promises) {
         patch.toRemove.forEach(function (x) {
-          return (0, _memory.unprotectElement)(x, _make2.default);
+          return (0, _memory.unprotectElement)(x, _make4.default);
         });
         el.innerHTML = '';
       });
@@ -1352,12 +1318,12 @@ function process(element, patches) {
           triggerTransition('detached', _detachPromises, function (promises) {
             el.parentNode.removeChild(el);
             patch.toRemove.forEach(function (x) {
-              return (0, _memory.unprotectElement)(x, _make2.default);
+              return (0, _memory.unprotectElement)(x, _make4.default);
             });
           });
         } else {
           patch.toRemove.forEach(function (x) {
-            return (0, _memory.unprotectElement)(x, _make2.default);
+            return (0, _memory.unprotectElement)(x, _make4.default);
           });
         }
       }
@@ -1388,7 +1354,7 @@ function process(element, patches) {
               allPromises.push.apply(allPromises, promises);
             });
 
-            (0, _memory.unprotectElement)(patch.old, _make2.default);
+            (0, _memory.unprotectElement)(patch.old, _make4.default);
 
             // Reset the tree cache.
             _tree.TreeCache.set(newEl, {
@@ -1401,7 +1367,7 @@ function process(element, patches) {
             if (allPromises.length) {
               Promise.all(allPromises).then(function replaceEntireElement() {
                 if (!oldEl.parentNode) {
-                  (0, _memory.unprotectElement)(patch.new, _make2.default);
+                  (0, _memory.unprotectElement)(patch.new, _make4.default);
 
                   throw new Error('Can\'t replace without parent, is this the ' + 'document root?');
                 }
@@ -1412,7 +1378,7 @@ function process(element, patches) {
               });
             } else {
               if (!oldEl.parentNode) {
-                (0, _memory.unprotectElement)(patch.new, _make2.default);
+                (0, _memory.unprotectElement)(patch.new, _make4.default);
 
                 throw new Error('Can\'t replace without parent, is this the ' + 'document root?');
               }
@@ -1448,7 +1414,7 @@ function process(element, patches) {
             // Remove.
             else if (oldEl && !newEl) {
                 if (!oldEl.parentNode) {
-                  (0, _memory.unprotectElement)(patch.old, _make2.default);
+                  (0, _memory.unprotectElement)(patch.old, _make4.default);
 
                   throw new Error('Can\'t remove without parent, is this the ' + 'document root?');
                 }
@@ -1463,7 +1429,7 @@ function process(element, patches) {
                   // And then empty out the entire contents.
                   oldEl.innerHTML = '';
 
-                  (0, _memory.unprotectElement)(patch.old, _make2.default);
+                  (0, _memory.unprotectElement)(patch.old, _make4.default);
                 });
               }
 
@@ -1471,8 +1437,8 @@ function process(element, patches) {
               else if (oldEl && newEl) {
                   (function () {
                     if (!oldEl.parentNode) {
-                      (0, _memory.unprotectElement)(patch.old, _make2.default);
-                      (0, _memory.unprotectElement)(patch.new, _make2.default);
+                      (0, _memory.unprotectElement)(patch.old, _make4.default);
+                      (0, _memory.unprotectElement)(patch.new, _make4.default);
 
                       throw new Error('Can\'t replace without parent, is this the ' + 'document root?');
                     }
@@ -1514,7 +1480,7 @@ function process(element, patches) {
                           oldEl.parentNode.replaceChild(newEl, oldEl);
                         }
 
-                        (0, _memory.unprotectElement)(patch.old, _make2.default);
+                        (0, _memory.unprotectElement)(patch.old, _make4.default);
 
                         (0, _memory.protectElement)(patch.new);
                       }, function (ex) {
@@ -1522,14 +1488,14 @@ function process(element, patches) {
                       });
                     } else {
                       if (!oldEl.parentNode) {
-                        (0, _memory.unprotectElement)(patch.old, _make2.default);
-                        (0, _memory.unprotectElement)(patch.new, _make2.default);
+                        (0, _memory.unprotectElement)(patch.old, _make4.default);
+                        (0, _memory.unprotectElement)(patch.new, _make4.default);
 
                         throw new Error('Can\'t replace without parent, is this the ' + 'document root?');
                       }
 
                       oldEl.parentNode.replaceChild(newEl, oldEl);
-                      (0, _memory.unprotectElement)(patch.old, _make2.default);
+                      (0, _memory.unprotectElement)(patch.old, _make4.default);
                       (0, _memory.protectElement)(patch.new);
                     }
                   })();
@@ -1606,7 +1572,7 @@ function process(element, patches) {
   return promises.filter(Boolean);
 }
 
-},{"../element/get":1,"../node/make":6,"../node/sync":9,"../node/tree":10,"../transitions":13,"../util/entities":14,"../util/memory":15,"../util/pools":17}],12:[function(_dereq_,module,exports){
+},{"../element/make":1,"../node/make":5,"../node/sync":8,"../node/tree":9,"../transitions":12,"../util/entities":13,"../util/memory":14,"../util/pools":16}],11:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -1618,7 +1584,7 @@ var elements = exports.elements = ['altGlyph', 'altGlyphDef', 'altGlyphItem', 'a
 // Namespace.
 var namespace = exports.namespace = 'http://www.w3.org/2000/svg';
 
-},{}],13:[function(_dereq_,module,exports){
+},{}],12:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -1821,7 +1787,7 @@ function makePromises(stateName) {
   };
 }
 
-},{"./node/make":6}],14:[function(_dereq_,module,exports){
+},{"./node/make":5}],13:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -1838,12 +1804,16 @@ var element = document.createElement('div');
  * @return unescaped HTML
  */
 function decodeEntities(string) {
-  element.innerHTML = string;
+  // If there are no HTML entities, we can safely pass the string through.
+  if (string.indexOf('&') === -1) {
+    return string;
+  }
 
+  element.innerHTML = string;
   return element.textContent;
 }
 
-},{}],15:[function(_dereq_,module,exports){
+},{}],14:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -1904,7 +1874,6 @@ function unprotectElement(element, makeNode) {
   var attributeObject = _pools.pools.attributeObject;
 
   elementObject.unprotect(element);
-  elementObject.cache.uuid.delete(element.uuid);
 
   element.attributes.forEach(attributeObject.unprotect, attributeObject);
   element.childNodes.forEach(function (node) {
@@ -1912,7 +1881,7 @@ function unprotectElement(element, makeNode) {
   });
 
   if (makeNode && makeNode.nodes) {
-    delete makeNode.nodes[element.uuid];
+    makeNode.nodes.delete(element);
   }
 
   return element;
@@ -1925,15 +1894,6 @@ function cleanMemory(makeNode) {
   var elementObject = _pools.pools.elementObject;
   var attributeObject = _pools.pools.attributeObject;
 
-  // Clean out unused elements.
-  if (makeNode && makeNode.nodes) {
-    for (var uuid in makeNode.nodes) {
-      if (!elementObject.cache.uuid.has(uuid)) {
-        delete makeNode.nodes[uuid];
-      }
-    }
-  }
-
   // Empty all element allocations.
   elementObject.cache.allocated.forEach(function (v) {
     if (elementObject.cache.free.length < _pools.count) {
@@ -1942,6 +1902,13 @@ function cleanMemory(makeNode) {
   });
 
   elementObject.cache.allocated.clear();
+
+  // Clean out unused elements.
+  makeNode.nodes.forEach(function (v, k) {
+    if (!elementObject.cache.protected.has(k)) {
+      makeNode.nodes.delete(k);
+    }
+  });
 
   // Empty all attribute allocations.
   attributeObject.cache.allocated.forEach(function (v) {
@@ -1953,7 +1920,7 @@ function cleanMemory(makeNode) {
   attributeObject.cache.allocated.clear();
 }
 
-},{"../node/make":6,"../util/pools":17}],16:[function(_dereq_,module,exports){
+},{"../node/make":5,"../util/pools":16}],15:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -2314,24 +2281,14 @@ function parse(data, supplemental) {
   return root;
 }
 
-},{"./pools":17}],17:[function(_dereq_,module,exports){
+},{"./pools":16}],16:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.count = exports.pools = undefined;
 exports.createPool = createPool;
 exports.initializePools = initializePools;
-
-var _uuid2 = _dereq_('./uuid');
-
-var _uuid3 = _interopRequireDefault(_uuid2);
-
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
-var uuid = _uuid3.default;
-
 var pools = exports.pools = {};
 var count = exports.count = 10000;
 
@@ -2349,8 +2306,7 @@ function createPool(name, opts) {
   var cache = {
     free: [],
     allocated: new Set(),
-    protected: new Set(),
-    uuid: new Set()
+    protected: new Set()
   };
 
   // Prime the cache with n objects.
@@ -2369,10 +2325,6 @@ function createPool(name, opts) {
     protect: function protect(value) {
       cache.allocated.delete(value);
       cache.protected.add(value);
-
-      if (name === 'elementObject') {
-        cache.uuid.add(value.uuid);
-      }
     },
     unprotect: function unprotect(value) {
       if (cache.protected.has(value)) {
@@ -2401,7 +2353,7 @@ function initializePools(COUNT) {
         nodeValue: '',
         nodeType: 1,
         key: '',
-        uuid: uuid(),
+        //isStatic: false,
         childNodes: [],
         attributes: []
       };
@@ -2412,7 +2364,7 @@ function initializePools(COUNT) {
 // Create ${COUNT} items of each type.
 initializePools(count);
 
-},{"./uuid":20}],18:[function(_dereq_,module,exports){
+},{}],17:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -2488,7 +2440,7 @@ function completeRender(element, elementMeta) {
   };
 }
 
-},{"../node/make":6,"../node/patch":7,"../node/tree":10,"../util/memory":15,"../util/pools":17}],19:[function(_dereq_,module,exports){
+},{"../node/make":5,"../node/patch":6,"../node/tree":9,"../util/memory":14,"../util/pools":16}],18:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -2515,14 +2467,12 @@ var _memory = _dereq_('./memory');
  * @return {Object} element
  */
 function createElement(nodeName, attributes, childNodes) {
-  if (nodeName === '_') {
+  if (!nodeName) {
     if ((typeof attributes === 'undefined' ? 'undefined' : _typeof(attributes)) === 'object' || typeof attributes === 'function') {
       return attributes;
     }
 
-    var _entry = createElement('#text', null, attributes);
-    _pools.pools.elementObject.protect(_entry);
-    return _entry;
+    return createElement('#text', null, attributes);
   }
 
   var entry = _pools.pools.elementObject.get();
@@ -2545,13 +2495,14 @@ function createElement(nodeName, attributes, childNodes) {
     });
   } else {
     var value = Array.isArray(childNodes) ? childNodes.join('') : childNodes;
+
     entry.nodeType = 3;
     entry.nodeValue = value;
     entry.attributes.length = 0;
     entry.childNodes.length = 0;
   }
 
-  _pools.pools.elementObject.protect(entry);
+  (0, _memory.protectElement)(entry);
 
   return entry;
 }
@@ -2569,31 +2520,8 @@ function createAttribute(name, value) {
   entry.name = name;
   entry.value = value;
 
-  _pools.pools.attributeObject.protect(entry);
-
   return entry;
 }
 
-},{"./memory":15,"./parser":16,"./pools":17}],20:[function(_dereq_,module,exports){
-'use strict';
-
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-exports.default = uuid;
-/**
- * Generates a uuid.
- *
- * @see http://stackoverflow.com/a/2117523/282175
- * @return {string} uuid
- */
-function uuid() {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
-    var r = Math.random() * 16 | 0;
-    var v = c == 'x' ? r : r & 0x3 | 0x8;
-    return v.toString(16);
-  });
-}
-
-},{}]},{},[5])(5)
+},{"./memory":14,"./parser":15,"./pools":16}]},{},[4])(4)
 });
