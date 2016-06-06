@@ -7,9 +7,11 @@
     "underscore": "^1.8.3",
     "combyne": "^0.8.1"
   },
-  "devDependencies": {},
+  "devDependencies": {
+    "babel-cli": "^6.9.0"
+  },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build_reddit": "babel --ignore node_modules ./fixtures/reddit_babel_transform/randomize_src.js -o ./fixtures/reddit_babel_transform/randomize.js"
   },
   "author": "Tim Branyen (@tbranyen)",
   "license": "MIT"

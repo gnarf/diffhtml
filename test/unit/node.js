@@ -5,7 +5,7 @@ import { registerElement } from '../../lib/index';
 
 describe('Unit: Node', function() {
   afterEach(function() {
-    cleanMemory(makeNode);
+    cleanMemory();
   });
 
   describe('make', function() {

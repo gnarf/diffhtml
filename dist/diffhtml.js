@@ -543,6 +543,8 @@ function make(node) {
   // diff and patch.
   var entry = _pools.pools.elementObject.get();
 
+  _pools.pools.elementObject.protect(entry);
+
   // Associate this newly allocated descriptor with this Node.
   make.nodes.set(entry, node);
 
@@ -550,14 +552,8 @@ function make(node) {
   entry.nodeName = node.nodeName.toLowerCase();
 
   // If the element is a text node set the nodeValue.
-  if (nodeType === 3) {
-    entry.nodeValue = node.textContent;
-    entry.nodeType = 3;
-  } else {
-    entry.nodeValue = '';
-    entry.nodeType = 1;
-  }
-
+  entry.nodeValue = nodeType === 3 ? node.textContent : '';
+  entry.nodeType = nodeType;
   entry.childNodes.length = 0;
   entry.attributes.length = 0;
 
@@ -565,22 +561,18 @@ function make(node) {
   var attributes = node.attributes;
 
   // If the element has no attributes, skip over.
-  if (attributes) {
-    var attributesLength = attributes.length;
+  if (attributes && attributes.length) {
+    for (var i = 0; i < attributes.length; i++) {
+      var attr = _pools.pools.attributeObject.get();
 
-    if (attributesLength) {
-      for (var i = 0; i < attributesLength; i++) {
-        var attr = _pools.pools.attributeObject.get();
+      attr.name = attributes[i].name;
+      attr.value = attributes[i].value;
 
-        attr.name = attributes[i].name;
-        attr.value = attributes[i].value;
-
-        if (attr.name === 'key') {
-          entry.key = attr.value;
-        }
-
-        entry.attributes[entry.attributes.length] = attr;
+      if (attr.name === 'key') {
+        entry.key = attr.value;
       }
+
+      entry.attributes.push(attr);
     }
   }
 
@@ -589,12 +581,12 @@ function make(node) {
   var childNodesLength = childNodes.length;
 
   // If the element has child nodes, convert them all to virtual nodes.
-  if (nodeType !== 3 && childNodesLength) {
+  if (childNodesLength) {
     for (var _i = 0; _i < childNodesLength; _i++) {
       var newNode = make(childNodes[_i]);
 
       if (newNode) {
-        entry.childNodes[entry.childNodes.length] = newNode;
+        entry.childNodes.push(newNode);
       }
     }
   }
@@ -698,7 +690,7 @@ function patchNode(element, newHTML, options) {
     var oldTree = elementMeta.oldTree;
 
     if (oldTree) {
-      (0, _memory.unprotectElement)(oldTree, _make2.default);
+      (0, _memory.unprotectElement)(oldTree);
     }
 
     elementMeta.oldTree = (0, _memory.protectElement)((0, _make2.default)(element));
@@ -717,16 +709,15 @@ function patchNode(element, newHTML, options) {
     var childNodes = (0, _parser.parse)(newHTML).childNodes;
     newTree = isInner ? childNodes : childNodes[0];
   } else if (newHTML.ownerDocument) {
-    newTree = (0, _make2.default)(newHTML);
+    var vTree = (0, _make2.default)(newHTML);
+    newTree = vTree.nodeType === 11 ? vTree.childNodes : vTree;
   } else {
     newTree = newHTML;
   }
 
   if (options.inner) {
-    var _childNodes = Array.isArray(newTree) ? newTree : [newTree];
-
     newTree = {
-      childNodes: _childNodes,
+      childNodes: [].concat(newTree),
       attributes: elementMeta.oldTree.attributes,
       nodeName: elementMeta.oldTree.nodeName,
       nodeValue: elementMeta.oldTree.nodeValue
@@ -736,12 +727,6 @@ function patchNode(element, newHTML, options) {
   // Synchronize the tree.
   var patches = (0, _sync2.default)(elementMeta.oldTree, newTree);
   var invokeRender = (0, _render.completeRender)(element, elementMeta);
-
-  if (Array.isArray(newTree)) {
-    newTree.forEach(_memory.unprotectElement);
-  } else if (newTree) {
-    newTree.childNodes.forEach(_memory.unprotectElement);
-  }
 
   // Process the data immediately and wait until all transition callbacks
   // have completed.
@@ -767,15 +752,9 @@ exports.default = releaseNode;
 
 var _tree = _dereq_('./tree');
 
-var _make = _dereq_('./make');
-
-var _make2 = _interopRequireDefault(_make);
-
 var _memory = _dereq_('../util/memory');
 
 var _pools = _dereq_('../util/pools');
-
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 /**
  * Release's the allocated objects and recycles internal memory.
@@ -791,17 +770,17 @@ function releaseNode(element) {
   if (elementMeta) {
     // If there was a tree set up, recycle the memory allocated for it.
     if (elementMeta.oldTree) {
-      (0, _memory.unprotectElement)(elementMeta.oldTree, _make2.default);
+      (0, _memory.unprotectElement)(elementMeta.oldTree);
     }
 
     // Remove this element's meta object from the cache.
     _tree.TreeCache.delete(element);
   }
 
-  (0, _memory.cleanMemory)(_make2.default);
+  (0, _memory.cleanMemory)();
 }
 
-},{"../util/memory":14,"../util/pools":16,"./make":5,"./tree":9}],8:[function(_dereq_,module,exports){
+},{"../util/memory":14,"../util/pools":16,"./tree":9}],8:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -912,7 +891,7 @@ function sync(oldTree, newTree, patches) {
       return patches;
     }
     // This element never changes.
-    else if (oldTree.isStatic) {
+    else if (oldTree === newTree) {
         return patches;
       }
 
@@ -1202,10 +1181,6 @@ var _make = _dereq_('../element/make');
 
 var _make2 = _interopRequireDefault(_make);
 
-var _make3 = _dereq_('../node/make');
-
-var _make4 = _interopRequireDefault(_make3);
-
 var _sync = _dereq_('../node/sync');
 
 var sync = _interopRequireWildcard(_sync);
@@ -1234,7 +1209,8 @@ var slice = Array.prototype.slice;
  * @param patches - Array that contains patch objects.
  */
 function process(element, patches) {
-  //console.log(JSON.parse(JSON.stringify(patches)));
+  //console.log(JSON.parse(JSON.stringify(patches, null, 2)));
+
   var elementMeta = _tree.TreeCache.get(element);
   var promises = [];
   var triggerTransition = transition.buildTrigger(promises);
@@ -1301,9 +1277,7 @@ function process(element, patches) {
       var detachPromises = transition.makePromises('detached', childNodes);
 
       triggerTransition('detached', detachPromises, function (promises) {
-        patch.toRemove.forEach(function (x) {
-          return (0, _memory.unprotectElement)(x, _make4.default);
-        });
+        (0, _memory.unprotectElement)(patch.toRemove);
         el.innerHTML = '';
       });
     }
@@ -1317,14 +1291,10 @@ function process(element, patches) {
         if (el.parentNode) {
           triggerTransition('detached', _detachPromises, function (promises) {
             el.parentNode.removeChild(el);
-            patch.toRemove.forEach(function (x) {
-              return (0, _memory.unprotectElement)(x, _make4.default);
-            });
+            (0, _memory.unprotectElement)(patch.toRemove);
           });
         } else {
-          patch.toRemove.forEach(function (x) {
-            return (0, _memory.unprotectElement)(x, _make4.default);
-          });
+          (0, _memory.unprotectElement)(patch.toRemove);
         }
       }
 
@@ -1354,7 +1324,7 @@ function process(element, patches) {
               allPromises.push.apply(allPromises, promises);
             });
 
-            (0, _memory.unprotectElement)(patch.old, _make4.default);
+            (0, _memory.unprotectElement)(patch.old);
 
             // Reset the tree cache.
             _tree.TreeCache.set(newEl, {
@@ -1367,7 +1337,7 @@ function process(element, patches) {
             if (allPromises.length) {
               Promise.all(allPromises).then(function replaceEntireElement() {
                 if (!oldEl.parentNode) {
-                  (0, _memory.unprotectElement)(patch.new, _make4.default);
+                  (0, _memory.unprotectElement)(patch.new);
 
                   throw new Error('Can\'t replace without parent, is this the ' + 'document root?');
                 }
@@ -1378,7 +1348,7 @@ function process(element, patches) {
               });
             } else {
               if (!oldEl.parentNode) {
-                (0, _memory.unprotectElement)(patch.new, _make4.default);
+                (0, _memory.unprotectElement)(patch.new);
 
                 throw new Error('Can\'t replace without parent, is this the ' + 'document root?');
               }
@@ -1414,7 +1384,7 @@ function process(element, patches) {
             // Remove.
             else if (oldEl && !newEl) {
                 if (!oldEl.parentNode) {
-                  (0, _memory.unprotectElement)(patch.old, _make4.default);
+                  (0, _memory.unprotectElement)(patch.old);
 
                   throw new Error('Can\'t remove without parent, is this the ' + 'document root?');
                 }
@@ -1429,7 +1399,7 @@ function process(element, patches) {
                   // And then empty out the entire contents.
                   oldEl.innerHTML = '';
 
-                  (0, _memory.unprotectElement)(patch.old, _make4.default);
+                  (0, _memory.unprotectElement)(patch.old);
                 });
               }
 
@@ -1437,8 +1407,8 @@ function process(element, patches) {
               else if (oldEl && newEl) {
                   (function () {
                     if (!oldEl.parentNode) {
-                      (0, _memory.unprotectElement)(patch.old, _make4.default);
-                      (0, _memory.unprotectElement)(patch.new, _make4.default);
+                      (0, _memory.unprotectElement)(patch.old);
+                      (0, _memory.unprotectElement)(patch.new);
 
                       throw new Error('Can\'t replace without parent, is this the ' + 'document root?');
                     }
@@ -1480,7 +1450,7 @@ function process(element, patches) {
                           oldEl.parentNode.replaceChild(newEl, oldEl);
                         }
 
-                        (0, _memory.unprotectElement)(patch.old, _make4.default);
+                        (0, _memory.unprotectElement)(patch.old);
 
                         (0, _memory.protectElement)(patch.new);
                       }, function (ex) {
@@ -1488,14 +1458,14 @@ function process(element, patches) {
                       });
                     } else {
                       if (!oldEl.parentNode) {
-                        (0, _memory.unprotectElement)(patch.old, _make4.default);
-                        (0, _memory.unprotectElement)(patch.new, _make4.default);
+                        (0, _memory.unprotectElement)(patch.old);
+                        (0, _memory.unprotectElement)(patch.new);
 
                         throw new Error('Can\'t replace without parent, is this the ' + 'document root?');
                       }
 
                       oldEl.parentNode.replaceChild(newEl, oldEl);
-                      (0, _memory.unprotectElement)(patch.old, _make4.default);
+                      (0, _memory.unprotectElement)(patch.old);
                       (0, _memory.protectElement)(patch.new);
                     }
                   })();
@@ -1572,7 +1542,7 @@ function process(element, patches) {
   return promises.filter(Boolean);
 }
 
-},{"../element/make":1,"../node/make":5,"../node/sync":8,"../node/tree":9,"../transitions":12,"../util/entities":13,"../util/memory":14,"../util/pools":16}],11:[function(_dereq_,module,exports){
+},{"../element/make":1,"../node/sync":8,"../node/tree":9,"../transitions":12,"../util/entities":13,"../util/memory":14,"../util/pools":16}],11:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -1800,7 +1770,7 @@ var element = document.createElement('div');
  * Decodes HTML strings.
  *
  * @see http://stackoverflow.com/a/5796718
- * @param stringing
+ * @param string
  * @return unescaped HTML
  */
 function decodeEntities(string) {
@@ -1839,9 +1809,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
  */
 function protectElement(element) {
   if (Array.isArray(element)) {
-    return element.forEach(function (childNode) {
-      return protectElement(childNode);
-    });
+    return element.forEach(protectElement);
   }
 
   var elementObject = _pools.pools.elementObject;
@@ -1850,9 +1818,7 @@ function protectElement(element) {
   elementObject.protect(element);
 
   element.attributes.forEach(attributeObject.protect, attributeObject);
-  element.childNodes.forEach(function (childNode) {
-    return protectElement(childNode);
-  });
+  element.childNodes.forEach(protectElement);
 
   return element;
 }
@@ -1865,9 +1831,7 @@ function protectElement(element) {
  */
 function unprotectElement(element) {
   if (Array.isArray(element)) {
-    return element.forEach(function (childNode) {
-      return unprotectElement(childNode, _make2.default);
-    });
+    return element.forEach(unprotectElement);
   }
 
   var elementObject = _pools.pools.elementObject;
@@ -1876,9 +1840,7 @@ function unprotectElement(element) {
   elementObject.unprotect(element);
 
   element.attributes.forEach(attributeObject.unprotect, attributeObject);
-  element.childNodes.forEach(function (node) {
-    return unprotectElement(node, _make2.default);
-  });
+  element.childNodes.forEach(unprotectElement);
 
   _make2.default.nodes.delete(element);
 
@@ -1902,9 +1864,9 @@ function cleanMemory() {
   elementCache.allocated.clear();
 
   // Clean out unused elements.
-  _make2.default.nodes.forEach(function (v, k) {
-    if (!elementCache.protected.has(k) && !elementCache.allocated.has(k)) {
-      _make2.default.nodes.delete(k);
+  _make2.default.nodes.forEach(function (node, descriptor) {
+    if (!elementCache.protected.has(descriptor)) {
+      _make2.default.nodes.delete(descriptor);
     }
   });
 
@@ -2351,7 +2313,6 @@ function initializePools(COUNT) {
         nodeValue: '',
         nodeType: 1,
         key: '',
-        //isStatic: false,
         childNodes: [],
         attributes: []
       };
@@ -2431,7 +2392,7 @@ function completeRender(element, elementMeta) {
     }
 
     // Clean out all the existing allocations.
-    (0, _memory.cleanMemory)(_make2.default);
+    (0, _memory.cleanMemory)();
 
     // Dispatch an event on the element once rendering has completed.
     element.dispatchEvent(new CustomEvent('renderComplete'));
@@ -2454,7 +2415,44 @@ var _pools = _dereq_('./pools');
 
 var _parser = _dereq_('./parser');
 
-var _memory = _dereq_('./memory');
+var _make = _dereq_('../node/make');
+
+var _make2 = _interopRequireDefault(_make);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+/**
+ * TODO Phase this out if possible, super slow iterations...
+ *
+ * @param childNodes
+ * @return
+ */
+function normalizeChildNodes(childNodes) {
+  var newChildNodes = [];
+
+  [].concat(childNodes).forEach(function (childNode) {
+    if ((typeof childNode === 'undefined' ? 'undefined' : _typeof(childNode)) !== 'object') {
+      if (childNode.indexOf && childNode.indexOf('<') > -1) {
+        var nodes = (0, _parser.parse)(childNode).childNodes;
+        newChildNodes.push(nodes.length === 1 ? nodes[0] : nodes);
+      } else {
+        newChildNodes.push(createElement('#text', null, childNode));
+      }
+    } else if ('length' in childNode) {
+      for (var i = 0; i < childNode.length; i++) {
+        var newChild = childNode[i];
+        var newNode = newChild.ownerDocument ? (0, _make2.default)(newChild) : newChild;
+
+        newChildNodes.push(newNode);
+      }
+    } else {
+      var node = childNode.ownerDocument ? (0, _make2.default)(childNode) : childNode;
+      newChildNodes.push(node);
+    }
+  });
+
+  return newChildNodes;
+}
 
 /**
  * Creates a virtual element used in or as a virtual tree.
@@ -2465,12 +2463,8 @@ var _memory = _dereq_('./memory');
  * @return {Object} element
  */
 function createElement(nodeName, attributes, childNodes) {
-  if (!nodeName) {
-    if ((typeof attributes === 'undefined' ? 'undefined' : _typeof(attributes)) === 'object' || typeof attributes === 'function') {
-      return attributes;
-    }
-
-    return createElement('#text', null, attributes);
+  if (nodeName === '') {
+    return normalizeChildNodes(childNodes);
   }
 
   var entry = _pools.pools.elementObject.get();
@@ -2483,8 +2477,9 @@ function createElement(nodeName, attributes, childNodes) {
     entry.nodeType = 1;
     entry.nodeValue = '';
     entry.attributes = attributes || [];
-    entry.childNodes = childNodes;
+    entry.childNodes = normalizeChildNodes(childNodes);
 
+    // Set the key prop if passed as an attr.
     entry.attributes.some(function (attr) {
       if (attr.name === 'key') {
         entry.key = attr.value;
@@ -2499,8 +2494,6 @@ function createElement(nodeName, attributes, childNodes) {
     entry.attributes.length = 0;
     entry.childNodes.length = 0;
   }
-
-  (0, _memory.protectElement)(entry);
 
   return entry;
 }
@@ -2521,5 +2514,5 @@ function createAttribute(name, value) {
   return entry;
 }
 
-},{"./memory":14,"./parser":15,"./pools":16}]},{},[4])(4)
+},{"../node/make":5,"./parser":15,"./pools":16}]},{},[4])(4)
 });
